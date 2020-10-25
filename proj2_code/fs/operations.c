@@ -169,7 +169,6 @@ int create(char *name, type nodeType){
 	type pType;
 	union Data pdata;
 
-	LockedLocks lockedLocks;
 	pthread_rwlock_t lock;
 
 	strcpy(name_copy, name);
@@ -184,7 +183,6 @@ int create(char *name, type nodeType){
 	}
 
 	inode_get(parent_inumber, &pType, &pdata, &lock);
-	lockedLocks_lock(&lock, &lockedLocks, WRITE);
 
 	if(pType != T_DIRECTORY) {
 		printf("failed to create %s, parent %s is not a dir\n",
@@ -206,16 +204,12 @@ int create(char *name, type nodeType){
 		return FAIL;
 	}
 
-	inode_get(child_inumber, &pType, &pdata, &lock);
-	lockedLocks_lock(&lock, &lockedLocks, WRITE);
-
 	if (dir_add_entry(parent_inumber, child_inumber, child_name) == FAIL) {
 		printf("could not add entry %s in dir %s\n",
 		       child_name, parent_name);
 		return FAIL;
 	}
 
-	lockedLocks_unlock(&lockedLocks);
 	return SUCCESS;
 }
 
