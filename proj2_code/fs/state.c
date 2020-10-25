@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <pthread.h>
 #include "state.h"
 #include "../tecnicofs-api-constants.h"
 
@@ -36,9 +37,12 @@ void inode_table_destroy() {
         if (inode_table[i].nodeType != T_NONE) {
             /* as data is an union, the same pointer is used for both dirEntries and fileContents */
             /* just release one of them */
-	  if (inode_table[i].data.dirEntries)
-            free(inode_table[i].data.dirEntries);
+	        if (inode_table[i].data.dirEntries)
+                free(inode_table[i].data.dirEntries);
         }
+
+        /* Destroy i-node lock */
+        pthread_rwlock_destroy(&inode_table[i].lock);
     }
 }
 
@@ -106,7 +110,7 @@ int inode_delete(int inumber) {
  *  - data: pointer to data
  * Returns: SUCCESS or FAIL
  */
-int inode_get(int inumber, type *nType, union Data *data) {
+int inode_get(int inumber, type *nType, union Data *data, pthread_rwlock_t *lock) {
     /* Used for testing synchronization speedup */
     insert_delay(DELAY);
 
@@ -120,6 +124,9 @@ int inode_get(int inumber, type *nType, union Data *data) {
 
     if (data)
         *data = inode_table[inumber].data;
+
+    if (lock) 
+        *lock = inode_table[inumber].lock;
 
     return SUCCESS;
 }

@@ -14,4 +14,3 @@ void startTimer(Timer *timer);
 void stopTimer(Timer *timer);
 
 #endif
-

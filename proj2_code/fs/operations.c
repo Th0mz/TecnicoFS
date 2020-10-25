@@ -3,6 +3,54 @@
 #include <stdio.h>
 #include <string.h>
 
+#define READ 0
+#define WRITE 1
+
+typedef struct lockedLocks {
+	pthread_rwlock_t *locks[INODE_TABLE_SIZE];
+	int numberOfLocks;
+} LockedLocks;
+
+void lockedLocks_init(LockedLocks *lockedLocks) {
+	lockedLocks->numberOfLocks = 0;
+}
+
+/* Given a lock and a type, locks the lock according to the 
+* type passed and adds that lock to a list of all the locks
+*  used in that funcion 
+*/
+void lockedLocks_lock(pthread_rwlock_t *lock, LockedLocks *lockedLocks, int type) {
+
+	if(type == READ) {
+		if(pthread_rwlock_rdlock(lock) != 0) { 
+			exit(EXIT_FAILURE); 
+		}
+	}
+	else if (type == WRITE){ 
+		if(pthread_rwlock_wrlock(lock) != 0) { 
+			exit(EXIT_FAILURE);
+		}	
+	}
+
+	int position = lockedLocks->numberOfLocks;
+	lockedLocks->locks[position] = lock;
+
+	lockedLocks->numberOfLocks++;	
+}
+
+/* Given all the lockedLocks unlocks them all 
+*/
+void lockedLocks_unlock(LockedLocks *lockedLocks) {
+	int numberOfLocks = lockedLocks->numberOfLocks;
+	
+	for (int i = 0; i < numberOfLocks; i++) {
+		if(pthread_rwlock_unlock(lockedLocks->locks[i]) != 0) {
+			exit(EXIT_FAILURE);
+		}
+	}
+	
+}
+
 /* Given a path, fills pointers with strings for the parent path and child
  * file name
  * Input:
@@ -121,6 +169,9 @@ int create(char *name, type nodeType){
 	type pType;
 	union Data pdata;
 
+	LockedLocks lockedLocks;
+	pthread_rwlock_t lock;
+
 	strcpy(name_copy, name);
 	split_parent_child_from_path(name_copy, &parent_name, &child_name);
 
@@ -132,7 +183,8 @@ int create(char *name, type nodeType){
 		return FAIL;
 	}
 
-	inode_get(parent_inumber, &pType, &pdata);
+	inode_get(parent_inumber, &pType, &pdata, &lock);
+	lockedLocks_lock(&lock, &lockedLocks, WRITE);
 
 	if(pType != T_DIRECTORY) {
 		printf("failed to create %s, parent %s is not a dir\n",
@@ -154,12 +206,16 @@ int create(char *name, type nodeType){
 		return FAIL;
 	}
 
+	inode_get(child_inumber, &pType, &pdata, &lock);
+	lockedLocks_lock(&lock, &lockedLocks, WRITE);
+
 	if (dir_add_entry(parent_inumber, child_inumber, child_name) == FAIL) {
 		printf("could not add entry %s in dir %s\n",
 		       child_name, parent_name);
 		return FAIL;
 	}
 
+	lockedLocks_unlock(&lockedLocks);
 	return SUCCESS;
 }
 
@@ -177,6 +233,7 @@ int delete(char *name){
 	/* use for copy */
 	type pType, cType;
 	union Data pdata, cdata;
+	pthread_rwlock_t lock;
 
 	strcpy(name_copy, name);
 	split_parent_child_from_path(name_copy, &parent_name, &child_name);
@@ -189,7 +246,7 @@ int delete(char *name){
 		return FAIL;
 	}
 
-	inode_get(parent_inumber, &pType, &pdata);
+	inode_get(parent_inumber, &pType, &pdata, &lock);
 
 	if(pType != T_DIRECTORY) {
 		printf("failed to delete %s, parent %s is not a dir\n",
@@ -205,7 +262,7 @@ int delete(char *name){
 		return FAIL;
 	}
 
-	inode_get(child_inumber, &cType, &cdata);
+	inode_get(child_inumber, &cType, &cdata, &lock);
 
 	if (cType == T_DIRECTORY && is_dir_empty(cdata.dirEntries) == FAIL) {
 		printf("could not delete %s: is a directory and not empty\n",
@@ -239,6 +296,9 @@ int delete(char *name){
  *     FAIL: otherwise
  */
 int lookup(char *name) {
+	LockedLocks lockedLocks;
+	lockedLocks_init(&lockedLocks);
+
 	char full_path[MAX_FILE_NAME];
 	char delim[] = "/";
 
@@ -250,17 +310,23 @@ int lookup(char *name) {
 	/* use for copy */
 	type nType;
 	union Data data;
+	pthread_rwlock_t lock;
 
 	/* get root inode data */
-	inode_get(current_inumber, &nType, &data);
+	inode_get(current_inumber, &nType, &data, &lock);
+
+	lockedLocks_lock(&lock, &lockedLocks, READ);
 
 	char *path = strtok(full_path, delim);
 
 	/* search for all sub nodes */
 	while (path != NULL && (current_inumber = lookup_sub_node(path, data.dirEntries)) != FAIL) {
-		inode_get(current_inumber, &nType, &data);
+		inode_get(current_inumber, &nType, &data, &lock);
+		lockedLocks_lock(&lock, &lockedLocks, READ);
 		path = strtok(NULL, delim);
 	}
+
+	lockedLocks_unlock(&lockedLocks);
 
 	return current_inumber;
 }
