@@ -185,7 +185,6 @@ int create(char *name, type nodeType){
 
 	inode_get(parent_inumber, &pType, &pdata, &lock);
 
-	lockedLocks_lock(&lock,&lockedLocks,WRITE);
 
 	if(pType != T_DIRECTORY) {
 		printf("failed to create %s, parent %s is not a dir\n",
@@ -202,9 +201,6 @@ int create(char *name, type nodeType){
 	/* create node and add entry to folder that contains new node */
 	child_inumber = inode_create(nodeType);
 
-	inode_get(child_inumber, &pType, &pdata, &lock);
-
-	lockedLocks_lock(&lock,&lockedLocks,WRITE);
 
 	if (child_inumber == FAIL) {
 		printf("failed to create %s in  %s, couldn't allocate inode\n",
