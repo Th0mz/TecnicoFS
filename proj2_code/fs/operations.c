@@ -303,6 +303,7 @@ int lookup(char *name) {
 	LockedLocks lockedLocks;
 	lockedLocks_init(&lockedLocks);
 
+	char *saveptr;
 	char full_path[MAX_FILE_NAME];
 	char delim[] = "/";
 
@@ -321,13 +322,13 @@ int lookup(char *name) {
 
 	lockedLocks_lock(&lock, &lockedLocks, READ);
 
-	char *path = strtok(full_path, delim);
+	char *path = strtok_r(full_path, delim, &saveptr);
 
 	/* search for all sub nodes */
 	while (path != NULL && (current_inumber = lookup_sub_node(path, data.dirEntries)) != FAIL) {
 		inode_get(current_inumber, &nType, &data, &lock);
 		lockedLocks_lock(&lock, &lockedLocks, READ);
-		path = strtok(NULL, delim);
+		path = strtok_r(NULL, delim, &saveptr); 
 	}
 
 	lockedLocks_unlock(&lockedLocks);
