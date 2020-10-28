@@ -1,8 +1,8 @@
 
 /drapery
 /ergal
-/cypseline
 /telfer
+/cypseline
 /saccharimetrical
 /reluctantly
 /dalle

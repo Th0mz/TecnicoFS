@@ -43,7 +43,7 @@ char* removeCommand() {
         numberCommands--;
 
         pthread_mutex_unlock(&commandsMutex);
-
+        /*FIXME headQueue is shared memory*/
         return inputCommands[headQueue++];  
     }
 
@@ -54,6 +54,11 @@ char* removeCommand() {
 
 void errorParse(){
     fprintf(stderr, "Error: command invalid\n");
+    exit(EXIT_FAILURE);
+}
+
+void errorParseCustom(char *error) {
+    fprintf(stderr, "Error: %s\n", error);
     exit(EXIT_FAILURE);
 }
 
@@ -187,7 +192,7 @@ int main(int argc, char* argv[]) {
     
     /* Error : Invalid number of arguments */
     if (argc != 4) {
-        errorParse();
+        errorParseCustom("Invalid number of arguments");
     }
 
     char *inputFile = stringCopy(argv[1]);
@@ -195,9 +200,9 @@ int main(int argc, char* argv[]) {
 
     numberThreads = atoi(argv[3]);
     
-    /* Error : numberThreads not an int or = 0 */
-    if (numberThreads == 0) {
-        errorParse();
+    /* Error : numberThreads not an int or <= 0 */
+    if (numberThreads <= 0) {
+        errorParseCustom("numberThreads not an int or <= 0");
     }
 
     /* Set the path for the input file */
@@ -205,7 +210,7 @@ int main(int argc, char* argv[]) {
 
     /* Error : Check if the input file is valid */
     if (fpRead == NULL) {
-        errorParse();
+        errorParseCustom("Check if the input file is valid");
     }
 
 
@@ -214,7 +219,7 @@ int main(int argc, char* argv[]) {
 
     /* Error : Check if the output file is valid */
     if (fpOut == NULL) {
-        errorParse();
+        errorParseCustom("Check if the output file is valid");
     }
     
     /* process input and print tree */
@@ -223,9 +228,12 @@ int main(int argc, char* argv[]) {
     /* Create thread pool and execute commands */
     pthread_t tid[numberThreads];
 
+    /*Reservar tarefa para ler do buffer*/
+
     /* Create thread pool */
     for (int i = 0; i < numberThreads; i++) {
-        pthread_create(&tid[i], NULL, fnThread, NULL);
+        if(pthread_create(&tid[i], NULL, fnThread, NULL) != 0)
+            errorParseCustom("Failed to create thread");
     }
 
     /* Start timer*/
@@ -233,16 +241,18 @@ int main(int argc, char* argv[]) {
 
     /* Waiting for all the commands to be executed */
     for (int i = 0; i < numberThreads; i++) {
-        pthread_join(tid[i], NULL);
+        if(pthread_join(tid[i], NULL) != 0)
+            errorParseCustom("Failed to join thread");
     }
+
+    /* Stop timer */
+    stopTimer(&timer);
+
 
     print_tecnicofs_tree(fpOut);
 
     /* release allocated memory */
     destroy_fs();
-
-    /* Stop timer */
-    stopTimer(&timer);
 
     printf("TecnicoFS completed in %.4f seconds.\n", timer.elapsedTime);
 

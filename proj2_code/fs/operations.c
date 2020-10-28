@@ -169,8 +169,10 @@ int create(char *name, type nodeType){
 	type pType;
 	union Data pdata;
 
-	LockedLocks lockedLocks;
 	pthread_rwlock_t lock;
+	LockedLocks lockedLocks;
+	lockedLocks_init(&lockedLocks);
+
 
 	strcpy(name_copy, name);
 	split_parent_child_from_path(name_copy, &parent_name, &child_name);
@@ -184,7 +186,7 @@ int create(char *name, type nodeType){
 	}
 
 	inode_get(parent_inumber, &pType, &pdata, &lock);
-
+	lockedLocks_lock(&lock, &lockedLocks, WRITE);
 
 	if(pType != T_DIRECTORY) {
 		printf("failed to create %s, parent %s is not a dir\n",
@@ -201,6 +203,8 @@ int create(char *name, type nodeType){
 	/* create node and add entry to folder that contains new node */
 	child_inumber = inode_create(nodeType);
 
+	inode_get(child_inumber, &pType, &pdata, &lock);
+	lockedLocks_lock(&lock, &lockedLocks, WRITE);
 
 	if (child_inumber == FAIL) {
 		printf("failed to create %s in  %s, couldn't allocate inode\n",
@@ -235,6 +239,9 @@ int delete(char *name){
 	union Data pdata, cdata;
 	pthread_rwlock_t lock;
 
+	LockedLocks lockedLocks;
+	lockedLocks_init(&lockedLocks);
+
 	strcpy(name_copy, name);
 	split_parent_child_from_path(name_copy, &parent_name, &child_name);
 
@@ -247,6 +254,7 @@ int delete(char *name){
 	}
 
 	inode_get(parent_inumber, &pType, &pdata, &lock);
+	lockedLocks_lock(&lock, &lockedLocks,WRITE);
 
 	if(pType != T_DIRECTORY) {
 		printf("failed to delete %s, parent %s is not a dir\n",
@@ -263,6 +271,7 @@ int delete(char *name){
 	}
 
 	inode_get(child_inumber, &cType, &cdata, &lock);
+	lockedLocks_lock(&lock, &lockedLocks, WRITE);
 
 	if (cType == T_DIRECTORY && is_dir_empty(cdata.dirEntries) == FAIL) {
 		printf("could not delete %s: is a directory and not empty\n",
@@ -282,6 +291,8 @@ int delete(char *name){
 		       child_inumber, parent_name);
 		return FAIL;
 	}
+
+	lockedLocks_unlock(&lockedLocks);
 
 	return SUCCESS;
 }
