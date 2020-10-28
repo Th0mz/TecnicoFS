@@ -8,6 +8,14 @@ void startTimer(Timer *timer) {
 void stopTimer(Timer *timer) {
     gettimeofday(&timer->stop, NULL);
 
+    int microseconds;
+    int seconds;
+
     /* Time in microseconds to seconds [1ms = 1/ 10**⁻6 s ] */
-    timer->elapsedTime = (timer->stop.tv_usec - timer->start.tv_usec) / 1000000.0;
+    microseconds = (timer->stop.tv_usec - timer->start.tv_usec) / 1000000.0;
+    
+    /* Time in seconds */
+    seconds = timer->stop.tv_sec - timer->start.tv_sec;
+
+    timer->elapsedTime = seconds + microseconds;
 }
