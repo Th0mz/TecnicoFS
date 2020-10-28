@@ -14,8 +14,6 @@
 #include "timer.h"
 #include <pthread.h>
 
-#include <unistd.h>
-
 #define MAX_COMMANDS 150000
 #define MAX_INPUT_SIZE 100
 
@@ -232,7 +230,6 @@ int main(int argc, char* argv[]) {
     
     /* Start timer*/
     startTimer(&timer);
-    sleep(3);
 
     /*Reservar tarefa para ler do buffer*/
     
