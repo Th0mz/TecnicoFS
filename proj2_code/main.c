@@ -14,6 +14,8 @@
 #include "timer.h"
 #include <pthread.h>
 
+#include <unistd.h>
+
 #define MAX_COMMANDS 150000
 #define MAX_INPUT_SIZE 100
 
@@ -227,17 +229,18 @@ int main(int argc, char* argv[]) {
 
     /* Create thread pool and execute commands */
     pthread_t tid[numberThreads];
+    
+    /* Start timer*/
+    startTimer(&timer);
+    sleep(3);
 
     /*Reservar tarefa para ler do buffer*/
-
+    
     /* Create thread pool */
     for (int i = 0; i < numberThreads; i++) {
         if(pthread_create(&tid[i], NULL, fnThread, NULL) != 0)
             errorParseCustom("Failed to create thread");
     }
-
-    /* Start timer*/
-    startTimer(&timer);
 
     /* Waiting for all the commands to be executed */
     for (int i = 0; i < numberThreads; i++) {
@@ -247,7 +250,6 @@ int main(int argc, char* argv[]) {
 
     /* Stop timer */
     stopTimer(&timer);
-
 
     print_tecnicofs_tree(fpOut);
 
