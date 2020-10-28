@@ -110,7 +110,7 @@ int inode_delete(int inumber) {
  *  - data: pointer to data
  * Returns: SUCCESS or FAIL
  */
-int inode_get(int inumber, type *nType, union Data *data, pthread_rwlock_t *lock) {
+int inode_get(int inumber, type *nType, union Data *data) {
     /* Used for testing synchronization speedup */
     insert_delay(DELAY);
 
@@ -124,6 +124,18 @@ int inode_get(int inumber, type *nType, union Data *data, pthread_rwlock_t *lock
 
     if (data)
         *data = inode_table[inumber].data;
+
+    return SUCCESS;
+}
+
+int inode_getLock(int inumber, pthread_rwlock_t *lock) {
+    /* Used for testing synchronization speedup */
+    insert_delay(DELAY);
+
+    if ((inumber < 0) || (inumber > INODE_TABLE_SIZE) || (inode_table[inumber].nodeType == T_NONE)) {
+        printf("inode_getLock: invalid inumber %d\n", inumber);
+        return FAIL;
+    }
 
     if (lock) 
         *lock = inode_table[inumber].lock;

@@ -12,19 +12,22 @@ LDFLAGS=-lm
 
 all: tecnicofs
 
-tecnicofs: fs/state.o fs/operations.o main.o timer.o
-	$(LD) $(CFLAGS) $(LDFLAGS) -o tecnicofs fs/state.o fs/operations.o main.o timer.o
+tecnicofs: fs/state.o fs/operations.o fs/lock_functions.o main.o timer.o
+	$(LD) $(CFLAGS) $(LDFLAGS) -o tecnicofs fs/state.o fs/operations.o fs/lock_functions.o main.o timer.o
 
 fs/state.o: fs/state.c fs/state.h tecnicofs-api-constants.h
 	$(CC) $(CFLAGS) -o fs/state.o -c fs/state.c
 
-fs/operations.o: fs/operations.c fs/operations.h fs/state.h tecnicofs-api-constants.h
+fs/lock_functions.o: fs/lock_functions.c fs/lock_functions.h fs/state.c fs/state.h tecnicofs-api-constants.h
+	$(CC) $(CFLAGS) -o fs/lock_functions.o -c fs/lock_functions.c
+
+fs/operations.o: fs/operations.c  fs/operations.h fs/lock_functions.h fs/state.h tecnicofs-api-constants.h
 	$(CC) $(CFLAGS) -o fs/operations.o -c fs/operations.c
 
 timer.o: timer.c
 	$(CC) $(CFLAGS) -o timer.o -c timer.c
 
-main.o: main.c fs/operations.h fs/state.h tecnicofs-api-constants.h timer.h
+main.o: main.c fs/operations.h fs/lock_functions.h fs/state.h tecnicofs-api-constants.h timer.h
 	$(CC) $(CFLAGS) -o main.o -c main.c
 
 clean:
