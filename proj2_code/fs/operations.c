@@ -10,7 +10,8 @@ typedef struct lockedLocks {
 	pthread_rwlock_t *locks[INODE_TABLE_SIZE];
 	int numberOfLocks;
 } LockedLocks;
-
+/*MUDAR PARA ARRAY DE INUMBER
+*/
 void lockedLocks_init(LockedLocks *lockedLocks) {
 	lockedLocks->numberOfLocks = 0;
 }
