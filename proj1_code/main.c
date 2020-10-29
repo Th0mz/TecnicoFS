@@ -245,13 +245,13 @@ int main(int argc, char* argv[]) {
     /* Create thread pool and execute commands */
     pthread_t tid[numberThreads];
 
+    /* Start timer*/
+    startTimer(&timer);
+
     /* Create thread pool */
     for (int i = 0; i < numberThreads; i++) {
         pthread_create(&tid[i], NULL, fnThread, NULL);
     }
-
-    /* Start timer*/
-    startTimer(&timer);
 
     /* Waiting for all the commands to be executed */
     for (int i = 0; i < numberThreads; i++) {
