@@ -1,0 +1,4 @@
+
+/fruits
+/fruits/banana
+/animals
