@@ -12,42 +12,42 @@
 #include "fs/operations.h"
 
 #include "timer.h"
+#include "circularBuffer.h"
 #include <pthread.h>
 
-#define MAX_COMMANDS 150000
-#define MAX_INPUT_SIZE 100
+#define FALSE 0
+#define TRUE 1
+
 
 /*Global mutex to control the synchronization of the acess to the vector of commands */
 pthread_mutex_t commandsMutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t canProduce = PTHREAD_COND_INITIALIZER;
+pthread_cond_t canConsume = PTHREAD_COND_INITIALIZER;
 
 int numberThreads = 0;
 
-char inputCommands[MAX_COMMANDS][MAX_INPUT_SIZE];
-int numberCommands = 0;
-int headQueue = 0;
+CircularBuffer buffer;
+
+/* Flag that has the state of the file of inputs (ended or not) */
+int endOfFile = 0;
 
 
 int insertCommand(char* data) {
-    if(numberCommands != MAX_COMMANDS) {
-        strcpy(inputCommands[numberCommands++], data);
+
+    if(buffer.numberElements != MAX_COMMANDS) {
+        addInput(&buffer, data);
         return 1;
     }
     return 0;
 }
 
 char* removeCommand() {
-    
-    pthread_mutex_lock(&commandsMutex);
+    char* command;
 
-    if(numberCommands > 0){
-        numberCommands--;
-
-        pthread_mutex_unlock(&commandsMutex);
-        /*FIXME headQueue is shared memory*/
-        return inputCommands[headQueue++];  
+    if(buffer.numberElements > 0){
+        command = removeHead(&buffer); 
+        return command;  
     }
-
-    pthread_mutex_unlock(&commandsMutex);
 
     return NULL;
 }
@@ -66,108 +66,149 @@ void processInput(FILE *fpRead){
     char line[MAX_INPUT_SIZE];
     
     /* break loop with ^Z or ^D */
-    while (fgets(line, sizeof(line)/sizeof(char), fpRead)) {
-        char token, type;
-        char name[MAX_INPUT_SIZE];
+    if (fgets(line, sizeof(line)/sizeof(char), fpRead) == NULL) {
+        endOfFile = TRUE;
 
-        int numTokens = sscanf(line, "%c %s %c", &token, name, &type);
+        printf("FILE ENDED\n");
+        printf("%s", line);
+        return;
+    }
 
-        /* perform minimal validation */
-        if (numTokens < 1) {
-            continue;
-        }
-        switch (token) {
-            case 'c':
-                if(numTokens != 3)
-                    errorParse();
-                if(insertCommand(line))
-                    break;
-                return;
-            
-            case 'l':
-                if(numTokens != 2)
-                    errorParse();
-                if(insertCommand(line))
-                    break;
-                return;
-            
-            case 'd':
-                if(numTokens != 2)
-                    errorParse();
-                if(insertCommand(line))
-                    break;
-                return;
-            
-            case '#':
-                break;
-            
-            default: { /* error */
+    printf("%s\n", line);
+
+    char token, type;
+    char name[MAX_INPUT_SIZE];
+
+    int numTokens = sscanf(line, "%c %s %c", &token, name, &type);
+
+    /* perform minimal validation */
+    if (numTokens < 1) {
+        return;
+    }
+
+    switch (token) {
+        case 'c':
+            if(numTokens != 3)
                 errorParse();
-            }
+            if(insertCommand(line))
+                break;
+            return;
+        
+        case 'l':
+            if(numTokens != 2)
+                errorParse();
+            if(insertCommand(line))
+                break;
+            return;
+        
+        case 'd':
+            if(numTokens != 2)
+                errorParse();
+            if(insertCommand(line))
+                break;
+            return;
+        
+        case '#':
+            break;
+        
+        default: { /* error */
+            errorParse();
         }
     }
 }
 
 void applyCommands(FILE *fpOut){
-    while (numberCommands > 0){
-        const char* command = removeCommand();
-        if (command == NULL){
-            continue;
-        }
+    const char* command = removeCommand();
 
-        char token, type;
-        char name[MAX_INPUT_SIZE];
-        int numTokens = sscanf(command, "%c %s %c", &token, name, &type);
-        if (numTokens < 2) {
-            fprintf(stderr, "Error: invalid command in Queue\n");
-            exit(EXIT_FAILURE);
-        }
+    if (command == NULL){
+        return;
+    }
 
-        int searchResult;
-        switch (token) {
-            case 'c':
-                switch (type) {
-                    case 'f':
-                        printf("Create file: %s\n", name);
+    char token, type;
+    char name[MAX_INPUT_SIZE];
+    int numTokens = sscanf(command, "%c %s %c", &token, name, &type);
+    if (numTokens < 2) {
+        fprintf(stderr, "Error: invalid command in Queue\n");
+        exit(EXIT_FAILURE);
+    }
 
-                        create(name, T_FILE);
-                        break;
-                    case 'd':
-                        printf("Create directory: %s\n", name);
-                        
-                        create(name, T_DIRECTORY);
-                        break;
-                    default:
-                        fprintf(stderr, "Error: invalid node type\n");
-                        exit(EXIT_FAILURE);
-                }
-                break;
-            case 'l':     
-                searchResult = lookup(name);
+    int searchResult;
+    switch (token) {
+        case 'c':
+            switch (type) {
+                case 'f':
+                    printf("Create file: %s\n", name);
 
-                if (searchResult >= 0){
-                    printf("Search: %s found\n", name);
-                }
-                else{
-                    printf("Search: %s not found\n", name);
-                }
-                break;
-            case 'd':
-                printf("Delete: %s\n", name);
-                
-                delete(name);
-                break;
-            default: { /* error */
-                fprintf(stderr, "Error: command to apply\n");
-                exit(EXIT_FAILURE);
+                    create(name, T_FILE);
+                    break;
+                case 'd':
+                    printf("Create directory: %s\n", name);
+                    
+                    create(name, T_DIRECTORY);
+                    break;
+                default:
+                    fprintf(stderr, "Error: invalid node type\n");
+                    exit(EXIT_FAILURE);
             }
+            break;
+        case 'l':     
+            searchResult = lookup(name);
+
+            if (searchResult >= 0){
+                printf("Search: %score found\n", name);
+            }
+            else{
+                printf("Search: %s not found\n", name);
+            }
+            break;
+        case 'd':
+            printf("Delete: %s\n", name);
+            
+            delete(name);
+            break;
+        default: { /* error */
+            fprintf(stderr, "Error: command to apply\n");
+            exit(EXIT_FAILURE);
         }
     }
 }
 
-void *fnThread(void *arg) {
-    applyCommands(stdout);
+void *fnProduce(void *arg) {
+    FILE *fpRead = (FILE *) arg;
 
+    while ( endOfFile == FALSE ) {
+        pthread_mutex_lock(&commandsMutex);
+        while (isBufferFull(buffer) == TRUE) {
+            pthread_cond_wait(&canProduce, &commandsMutex);
+        }
+
+        processInput(fpRead);
+        pthread_cond_signal(&canConsume);
+
+        pthread_mutex_unlock(&commandsMutex);
+    }
+
+    printf("Producer ended\n");
+    return NULL;
+}
+
+void *fnConsume(void *arg) {
+    FILE *fpOut = (FILE *) arg; 
+
+    while ( endOfFile == FALSE || isBufferEmpty(buffer) == FALSE ) {
+
+        pthread_mutex_lock(&commandsMutex);
+        while (isBufferEmpty(buffer) == TRUE) {
+            pthread_cond_wait(&canConsume, &commandsMutex);
+        }
+
+        applyCommands(fpOut);
+        pthread_cond_signal(&canProduce);
+
+        pthread_mutex_unlock(&commandsMutex);
+    }
+
+    printf("Consumer ended\n");
     return NULL;
 }
 
@@ -181,13 +222,32 @@ char *stringCopy(char *string) {
     return newString;
 }
 
+void closeProgram(FILE *fpRead, FILE *fpOut, char *inputFile, char *outputFile) {
+    /* release allocated memory */
+    destroy_fs();
+
+    /*close previously opened files*/
+    fclose(fpRead);
+    fclose(fpOut);
+
+    /* release allocated memory */
+    free(inputFile);
+    free(outputFile);
+
+    pthread_mutex_destroy(&commandsMutex);
+    exit(EXIT_SUCCESS);
+
+}
+
 int main(int argc, char* argv[]) {
-    /* init filesystem */
+    initBuffer(&buffer);
+
     FILE *fpRead;
     FILE *fpOut;
 
     Timer timer;
 
+    /* init filesystem */
     init_fs();
     
     /* Error : Invalid number of arguments */
@@ -205,7 +265,7 @@ int main(int argc, char* argv[]) {
         errorParseCustom("numberThreads not an int or <= 0");
     }
 
-    /* Set the path for the input file */
+    /* Open the input file */
     fpRead = fopen(inputFile, "r");
 
     /* Error : Check if the input file is valid */
@@ -213,57 +273,45 @@ int main(int argc, char* argv[]) {
         errorParseCustom("Check if the input file is valid");
     }
 
-
-    /* Set the path for the output file */
+    /* Open the output file */
     fpOut = fopen(outputFile, "w");
 
     /* Error : Check if the output file is valid */
     if (fpOut == NULL) {
         errorParseCustom("Check if the output file is valid");
     }
-    
-    /* process input and print tree */
-    processInput(fpRead);
 
     /* Create thread pool and execute commands */
-    pthread_t tid[numberThreads];
-    
+    pthread_t tidConsumer[numberThreads];
+    pthread_t tidProducer;
+
     /* Start timer*/
     startTimer(&timer);
-
-    /*Reservar tarefa para ler do buffer*/
     
     /* Create thread pool */
+    if (pthread_create(&tidProducer, NULL, fnProduce, fpRead) != 0)
+        errorParseCustom("Failed to create thread");
+
     for (int i = 0; i < numberThreads; i++) {
-        if(pthread_create(&tid[i], NULL, fnThread, NULL) != 0)
+        if(pthread_create(&tidConsumer[i], NULL, fnConsume, fpOut) != 0)
             errorParseCustom("Failed to create thread");
     }
 
     /* Waiting for all the commands to be executed */
+    if (pthread_join(tidProducer, NULL) != 0)
+        errorParseCustom("Failed to join thread");
+
     for (int i = 0; i < numberThreads; i++) {
-        if(pthread_join(tid[i], NULL) != 0)
+        if(pthread_join(tidConsumer[i], NULL) != 0)
             errorParseCustom("Failed to join thread");
     }
+
 
     /* Stop timer */
     stopTimer(&timer);
 
     print_tecnicofs_tree(fpOut);
 
-    /* release allocated memory */
-    destroy_fs();
-
     printf("TecnicoFS completed in %.4f seconds.\n", timer.elapsedTime);
-
-    /*close previously opened files*/
-    fclose(fpRead);
-    fclose(fpOut);
-
-    /* release allocated memory */
-    free(inputFile);
-    free(outputFile);
-
-    pthread_mutex_destroy(&commandsMutex);
-    
-    exit(EXIT_SUCCESS);
+    closeProgram(fpRead, fpOut, inputFile, outputFile);
 }
