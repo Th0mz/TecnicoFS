@@ -68,13 +68,8 @@ void processInput(FILE *fpRead){
     /* break loop with ^Z or ^D */
     if (fgets(line, sizeof(line)/sizeof(char), fpRead) == NULL) {
         endOfFile = TRUE;
-
-        printf("FILE ENDED\n");
-        printf("%s", line);
         return;
     }
-
-    printf("%s\n", line);
 
     char token, type;
     char name[MAX_INPUT_SIZE];
@@ -155,7 +150,7 @@ void applyCommands(FILE *fpOut){
             searchResult = lookup(name);
 
             if (searchResult >= 0){
-                printf("Search: %score found\n", name);
+                printf("Search: %s found\n", name);
             }
             else{
                 printf("Search: %s not found\n", name);
@@ -181,14 +176,13 @@ void *fnProduce(void *arg) {
         while (isBufferFull(buffer) == TRUE) {
             pthread_cond_wait(&canProduce, &commandsMutex);
         }
-
+        
         processInput(fpRead);
         pthread_cond_signal(&canConsume);
 
         pthread_mutex_unlock(&commandsMutex);
     }
 
-    printf("Producer ended\n");
     return NULL;
 }
 
@@ -199,6 +193,13 @@ void *fnConsume(void *arg) {
 
         pthread_mutex_lock(&commandsMutex);
         while (isBufferEmpty(buffer) == TRUE) {
+            /* Perguntar ao stor */
+            if (endOfFile == TRUE) {
+                pthread_cond_broadcast(&canConsume);
+                pthread_mutex_unlock(&commandsMutex);
+                return NULL;   
+            }
+
             pthread_cond_wait(&canConsume, &commandsMutex);
         }
 
@@ -208,7 +209,6 @@ void *fnConsume(void *arg) {
         pthread_mutex_unlock(&commandsMutex);
     }
 
-    printf("Consumer ended\n");
     return NULL;
 }
 

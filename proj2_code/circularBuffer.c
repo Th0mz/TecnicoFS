@@ -26,9 +26,10 @@ char* removeHead(CircularBuffer *buffer) {
     int head = buffer->head;
     char *element = buffer->inputElements[head];
     
+    buffer->numberElements--;
+
     head = (head + 1) % MAX_COMMANDS;
     buffer->head = head;
-    buffer->numberElements--;
 
     return element;
 }
