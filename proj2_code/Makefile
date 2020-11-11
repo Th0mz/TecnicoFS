@@ -12,14 +12,17 @@ LDFLAGS=-lm
 
 all: tecnicofs
 
-tecnicofs: fs/state.o fs/operations.o main.o timer.o circularBuffer.o
-	$(LD) $(CFLAGS) $(LDFLAGS) -o tecnicofs fs/state.o fs/operations.o main.o timer.o circularBuffer.o
+tecnicofs: fs/state.o fs/operations.o fs/lockedLocks.o main.o timer.o circularBuffer.o 
+	$(LD) $(CFLAGS) $(LDFLAGS) -o tecnicofs fs/state.o fs/operations.o fs/lockedLocks.o main.o timer.o circularBuffer.o 
 
 fs/state.o: fs/state.c fs/state.h tecnicofs-api-constants.h
 	$(CC) $(CFLAGS) -o fs/state.o -c fs/state.c
 
-fs/operations.o: fs/operations.c fs/operations.h fs/state.h tecnicofs-api-constants.h
+fs/operations.o: fs/operations.c fs/operations.h fs/state.h fs/lockedLocks.h tecnicofs-api-constants.h
 	$(CC) $(CFLAGS) -o fs/operations.o -c fs/operations.c
+
+fs/lockedLocks.o: fs/lockedLocks.c fs/lockedLocks.h fs/state.c fs/state.h tecnicofs-api-constants.h
+	$(CC) $(CFLAGS) -o fs/lockedLocks.o -c fs/lockedLocks.c
 
 timer.o: timer.c
 	$(CC) $(CFLAGS) -o timer.o -c timer.c

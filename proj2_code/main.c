@@ -103,6 +103,13 @@ void processInput(FILE *fpRead){
                 break;
             return;
         
+        case 'm' :
+            if(numTokens != 3)
+                errorParse();
+            if(insertCommand(line))
+                break;
+            return;
+        
         case '#':
             break;
         
@@ -168,17 +175,26 @@ void applyCommands(FILE *fpOut){
     }
 }
 
+int keepProducing() {
+    int condition;
+    pthread_mutex_lock(&commandsMutex);
+    condition = (endOfFile == FALSE);
+    pthread_mutex_unlock(&commandsMutex);
+    
+    return condition;
+}
+
 void *fnProduce(void *arg) {
     FILE *fpRead = (FILE *) arg;
-
-    while ( endOfFile == FALSE ) {
+    
+    while ( keepProducing() ) {
         pthread_mutex_lock(&commandsMutex);
         while (isBufferFull(buffer) == TRUE) {
             pthread_cond_wait(&canProduce, &commandsMutex);
         }
         
         processInput(fpRead);
-        pthread_cond_signal(&canConsume);
+        pthread_cond_broadcast(&canConsume);
 
         pthread_mutex_unlock(&commandsMutex);
     }
@@ -186,11 +202,19 @@ void *fnProduce(void *arg) {
     return NULL;
 }
 
+int keepConsuming() {
+    int condition;
+    pthread_mutex_lock(&commandsMutex);
+    condition = ((endOfFile == FALSE) || (isBufferEmpty(buffer) == FALSE));
+    pthread_mutex_unlock(&commandsMutex);
+    
+    return condition;
+}
+
 void *fnConsume(void *arg) {
-    FILE *fpOut = (FILE *) arg; 
+    FILE *fpOut = (FILE *) arg;
 
-    while ( endOfFile == FALSE || isBufferEmpty(buffer) == FALSE ) {
-
+    while ( keepConsuming() ) {
         pthread_mutex_lock(&commandsMutex);
         while (isBufferEmpty(buffer) == TRUE) {
             /* Perguntar ao stor */
