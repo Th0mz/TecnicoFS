@@ -71,10 +71,10 @@ void processInput(FILE *fpRead){
         return;
     }
 
-    char token, type;
-    char name[MAX_INPUT_SIZE];
+    char token;
+    char name[MAX_INPUT_SIZE], typeOrPath[MAX_INPUT_SIZE];
 
-    int numTokens = sscanf(line, "%c %s %c", &token, name, &type);
+    int numTokens = sscanf(line, "%c %s %s", &token, name, typeOrPath);
 
     /* perform minimal validation */
     if (numTokens < 1) {
@@ -127,8 +127,9 @@ void applyCommands(FILE *fpOut){
     }
 
     char token, type;
-    char name[MAX_INPUT_SIZE];
-    int numTokens = sscanf(command, "%c %s %c", &token, name, &type);
+    char name[MAX_INPUT_SIZE], typeOrPath[MAX_INPUT_SIZE];
+
+    int numTokens = sscanf(command, "%c %s %c", &token, name, typeOrpath);
     if (numTokens < 2) {
         fprintf(stderr, "Error: invalid command in Queue\n");
         exit(EXIT_FAILURE);
