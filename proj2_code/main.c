@@ -127,9 +127,10 @@ void applyCommands(FILE *fpOut){
     }
 
     char token, type;
-    char name[MAX_INPUT_SIZE], typeOrPath[MAX_INPUT_SIZE];
+    char name[MAX_INPUT_SIZE];
+    char typeOrPath[MAX_INPUT_SIZE];
 
-    int numTokens = sscanf(command, "%c %s %c", &token, name, typeOrpath);
+    int numTokens = sscanf(command, "%c %s %s", &token, name, typeOrPath);
     if (numTokens < 2) {
         fprintf(stderr, "Error: invalid command in Queue\n");
         exit(EXIT_FAILURE);
@@ -138,6 +139,7 @@ void applyCommands(FILE *fpOut){
     int searchResult;
     switch (token) {
         case 'c':
+            type = typeOrPath[0];
             switch (type) {
                 case 'f':
                     printf("Create file: %s\n", name);
@@ -168,6 +170,11 @@ void applyCommands(FILE *fpOut){
             printf("Delete: %s\n", name);
             
             delete(name);
+            break;
+        case 'm':
+            printf("Move: %s to %s\n", name, typeOrPath);
+            move(name, typeOrPath);
+
             break;
         default: { /* error */
             fprintf(stderr, "Error: command to apply\n");
