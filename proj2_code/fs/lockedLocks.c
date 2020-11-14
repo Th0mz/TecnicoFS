@@ -16,21 +16,21 @@ void lockedLocks_init(LockedLocks *lockedLocks) {
 */
 void lockedLocks_lock(LockedLocks *lockedLocks, int inumber , int type) {
 
-    pthread_rwlock_t lock = PTHREAD_RWLOCK_INITIALIZER;
+    pthread_rwlock_t *lock = inode_getLock(inumber);
     
-    if (inode_getLock(inumber, &lock) == FAIL) {
+    if (lock == NULL) {
         return;
     }
 
 	if(type == READ) {
-		if(pthread_rwlock_rdlock(&lock) != 0) { 
+		if(pthread_rwlock_rdlock(lock) != 0) { 
 			exit(EXIT_FAILURE); 
 		}
 
 		// DEBUG: printf("[Lock] inumber : %d -> READ\n", inumber);
 	}
 	else if (type == WRITE){ 
-		if(pthread_rwlock_wrlock(&lock) != 0) { 
+		if(pthread_rwlock_wrlock(lock) != 0) { 
 			exit(EXIT_FAILURE);
 		}
 
@@ -47,15 +47,15 @@ void lockedLocks_lock(LockedLocks *lockedLocks, int inumber , int type) {
 */
 void lockedLocks_unlock(LockedLocks *lockedLocks) {
 	int numberOfLocks = lockedLocks->numberOfLocks; 
-
-    pthread_rwlock_t lock = PTHREAD_RWLOCK_INITIALIZER;
     
 	for (int i = 0; i < numberOfLocks; i++) {
-        if (inode_getLock(lockedLocks->lockedNodesinumbers[i] , &lock) == FAIL) {
+		pthread_rwlock_t *lock = inode_getLock(lockedLocks->lockedNodesinumbers[i]);
+        
+		if (lock == NULL) {
             return;
         }
         
-        if(pthread_rwlock_unlock(&lock) != 0) {
+        if(pthread_rwlock_unlock(lock) != 0) {
 			exit(EXIT_FAILURE);
 		}
 

@@ -138,6 +138,7 @@ int create(char *name, type nodeType){
 		return FAIL;
 	}
 
+	lockedLocks_lock(&lockedLocks, parent_inumber, WRITE);
 	inode_get(parent_inumber, &pType, &pdata);
 
 	if(pType != T_DIRECTORY) {
@@ -214,6 +215,7 @@ int delete(char *name){
 		return FAIL;
 	}
 
+	lockedLocks_lock(&lockedLocks, parent_inumber, WRITE);
 	inode_get(parent_inumber, &pType, &pdata);
 
 	if(pType != T_DIRECTORY) {
@@ -498,8 +500,6 @@ int lookup_functions(char *name, LockedLocks *lockedLocks) {
 	/* Checks if the full path as some thing in it	*/
 	if (strcmp(full_path, "") != 0) {
 		lockedLocks_lock(lockedLocks, current_inumber, READ);
-	} else {
-		lockedLocks_lock(lockedLocks, current_inumber, WRITE);
 	}
 	
 	/* get root inode data */

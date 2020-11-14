@@ -6,6 +6,7 @@
 #include "state.h"
 #include "../tecnicofs-api-constants.h"
 
+
 inode_t inode_table[INODE_TABLE_SIZE];
 
 
@@ -25,6 +26,8 @@ void inode_table_init() {
         inode_table[i].nodeType = T_NONE;
         inode_table[i].data.dirEntries = NULL;
         inode_table[i].data.fileContents = NULL;
+
+        pthread_rwlock_init(&inode_table[i].lock, NULL);
     }
 }
 
@@ -42,7 +45,8 @@ void inode_table_destroy() {
         }
 
         /* Destroy i-node lock */
-        pthread_rwlock_destroy(&inode_table[i].lock);
+        if (&inode_table[i].lock)
+            pthread_rwlock_destroy(&inode_table[i].lock);
     }
 }
 
@@ -128,17 +132,14 @@ int inode_get(int inumber, type *nType, union Data *data) {
     return SUCCESS;
 }
 
-int inode_getLock(int inumber, pthread_rwlock_t *lock) {
+pthread_rwlock_t* inode_getLock(int inumber) {
     
     if ((inumber < 0) || (inumber > INODE_TABLE_SIZE)) {
         printf("inode_getLock: invalid inumber %d\n", inumber);
-        return FAIL;
+        return NULL;
     }
 
-    if (lock) 
-        *lock = inode_table[inumber].lock;
-
-    return SUCCESS;
+    return &inode_table[inumber].lock;
 }
 
 

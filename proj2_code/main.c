@@ -267,6 +267,8 @@ void closeProgram(FILE *fpRead, FILE *fpOut, char *inputFile, char *outputFile) 
     free(outputFile);
 
     pthread_mutex_destroy(&commandsMutex);
+    pthread_cond_destroy(&canProduce);
+    pthread_cond_destroy(&canConsume);
     exit(EXIT_SUCCESS);
 
 }
