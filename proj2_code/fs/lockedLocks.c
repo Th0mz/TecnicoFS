@@ -27,14 +27,16 @@ void lockedLocks_lock(LockedLocks *lockedLocks, int inumber , int type) {
 			exit(EXIT_FAILURE); 
 		}
 
-		// DEBUG: printf("[Lock] inumber : %d -> READ\n", inumber);
+		// DEBUG: 
+		printf("[Lock] inumber : %d -> READ\n", inumber);
 	}
 	else if (type == WRITE){ 
 		if(pthread_rwlock_wrlock(lock) != 0) { 
 			exit(EXIT_FAILURE);
 		}
 
-		// DEBUG: printf("[Lock] inumber : %d -> WRITE\n", inumber);	
+		// DEBUG: 
+		printf("[Lock] inumber : %d -> WRITE\n", inumber);	
 	}
 
 	int position = lockedLocks->numberOfLocks;
@@ -59,7 +61,8 @@ void lockedLocks_unlock(LockedLocks *lockedLocks) {
 			exit(EXIT_FAILURE);
 		}
 
-		// DEBUG: printf("[Unlock] inumber : %d\n", lockedLocks->lockedNodesinumbers[i]);	
+		// DEBUG: 
+		printf("[Unlock] inumber : %d\n", lockedLocks->lockedNodesinumbers[i]);	
 	}
 	
 }

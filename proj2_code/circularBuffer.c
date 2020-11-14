@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <string.h>
+#include <pthread.h>
+
 #include "circularBuffer.h"
 
 /* Initializes the circular buffer */

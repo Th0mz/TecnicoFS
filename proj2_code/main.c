@@ -43,7 +43,7 @@ int insertCommand(char* data) {
 
 char* removeCommand() {
     char* command;
-
+    
     if(buffer.numberElements > 0){
         command = removeHead(&buffer); 
         return command;  
@@ -120,8 +120,16 @@ void processInput(FILE *fpRead){
 }
 
 void applyCommands(FILE *fpOut){
-    const char* command = removeCommand();
 
+    if(pthread_mutex_lock(&commandsMutex)) {
+        errorParseCustom("Failed to lock");
+    }
+    const char* command = removeCommand();
+    
+    if(pthread_mutex_unlock(&commandsMutex)) {
+        errorParseCustom("Failed to unlock");
+    }
+    
     if (command == NULL){
         return;
     }
@@ -202,7 +210,7 @@ void *fnProduce(void *arg) {
         }
         
         processInput(fpRead);
-        pthread_cond_broadcast(&canConsume);
+        pthread_cond_signal(&canConsume);
 
         pthread_mutex_unlock(&commandsMutex);
     }
@@ -234,11 +242,10 @@ void *fnConsume(void *arg) {
 
             pthread_cond_wait(&canConsume, &commandsMutex);
         }
+        pthread_mutex_unlock(&commandsMutex);
 
         applyCommands(fpOut);
         pthread_cond_signal(&canProduce);
-
-        pthread_mutex_unlock(&commandsMutex);
     }
 
     return NULL;
