@@ -26,26 +26,27 @@ pthread_cond_t canConsume = PTHREAD_COND_INITIALIZER;
 
 int numberThreads = 0;
 
-CircularBuffer buffer;
+CircularBuffer commandsBuffer;
 
 /* Flag that has the state of the file of inputs (ended or not) */
 int endOfFile = 0;
 
+/* Inserts  */
+int insertCommand(char* data, CircularBuffer *buffer) {
 
-int insertCommand(char* data) {
-
-    if(buffer.numberElements != MAX_COMMANDS) {
-        addInput(&buffer, data);
+    if(buffer->numberElements != MAX_COMMANDS) {
+        addInput(buffer, data);
         return 1;
     }
     return 0;
 }
 
-char* removeCommand() {
+/* Removes a command from the global buffer */
+char* removeCommand(CircularBuffer *buffer) {
     char* command;
     
-    if(buffer.numberElements > 0){
-        command = removeHead(&buffer); 
+    if(buffer->numberElements > 0){
+        command = removeHead(buffer); 
         return command;  
     }
 
@@ -57,6 +58,7 @@ void errorParse(){
     exit(EXIT_FAILURE);
 }
 
+/* Similar to "errorParse" but prints custom messages */
 void errorParseCustom(char *error) {
     fprintf(stderr, "Error: %s\n", error);
     exit(EXIT_FAILURE);
@@ -85,28 +87,28 @@ void processInput(FILE *fpRead){
         case 'c':
             if(numTokens != 3)
                 errorParse();
-            if(insertCommand(line))
+            if(insertCommand(line, &commandsBuffer))
                 break;
             return;
         
         case 'l':
             if(numTokens != 2)
                 errorParse();
-            if(insertCommand(line))
+            if(insertCommand(line, &commandsBuffer))
                 break;
             return;
         
         case 'd':
             if(numTokens != 2)
                 errorParse();
-            if(insertCommand(line))
+            if(insertCommand(line, &commandsBuffer))
                 break;
             return;
         
         case 'm' :
             if(numTokens != 3)
                 errorParse();
-            if(insertCommand(line))
+            if(insertCommand(line, &commandsBuffer))
                 break;
             return;
         
@@ -119,16 +121,7 @@ void processInput(FILE *fpRead){
     }
 }
 
-void applyCommands(FILE *fpOut){
-
-    if(pthread_mutex_lock(&commandsMutex)) {
-        errorParseCustom("Failed to lock");
-    }
-    const char* command = removeCommand();
-    
-    if(pthread_mutex_unlock(&commandsMutex)) {
-        errorParseCustom("Failed to unlock");
-    }
+void applyCommands(char *command){
     
     if (command == NULL){
         return;
@@ -140,8 +133,7 @@ void applyCommands(FILE *fpOut){
 
     int numTokens = sscanf(command, "%c %s %s", &token, name, typeOrPath);
     if (numTokens < 2) {
-        fprintf(stderr, "Error: invalid command in Queue\n");
-        exit(EXIT_FAILURE);
+        errorParseCustom("invalid command in Queue");
     }
 
     int searchResult;
@@ -160,8 +152,7 @@ void applyCommands(FILE *fpOut){
                     create(name, T_DIRECTORY);
                     break;
                 default:
-                    fprintf(stderr, "Error: invalid node type\n");
-                    exit(EXIT_FAILURE);
+                    errorParseCustom("invalid node type");
             }
             break;
         case 'l':     
@@ -185,12 +176,12 @@ void applyCommands(FILE *fpOut){
 
             break;
         default: { /* error */
-            fprintf(stderr, "Error: command to apply\n");
-            exit(EXIT_FAILURE);
+            errorParseCustom("command to apply");
         }
     }
 }
 
+/* Predicate to check if there are still commands to be processed */
 int keepProducing() {
     int condition;
     pthread_mutex_lock(&commandsMutex);
@@ -200,17 +191,18 @@ int keepProducing() {
     return condition;
 }
 
+
 void *fnProduce(void *arg) {
     FILE *fpRead = (FILE *) arg;
     
     while ( keepProducing() ) {
         pthread_mutex_lock(&commandsMutex);
-        while (isBufferFull(buffer) == TRUE) {
+        while (isBufferFull(commandsBuffer) == TRUE) {
             pthread_cond_wait(&canProduce, &commandsMutex);
         }
         
         processInput(fpRead);
-        pthread_cond_signal(&canConsume);
+        pthread_cond_broadcast(&canConsume);
 
         pthread_mutex_unlock(&commandsMutex);
     }
@@ -218,22 +210,23 @@ void *fnProduce(void *arg) {
     return NULL;
 }
 
+/* Predicate to check if there are still commands to be executed in the buffer */
 int keepConsuming() {
     int condition;
     pthread_mutex_lock(&commandsMutex);
-    condition = ((endOfFile == FALSE) || (isBufferEmpty(buffer) == FALSE));
+    condition = ((endOfFile == FALSE) || (isBufferEmpty(commandsBuffer) == FALSE));
     pthread_mutex_unlock(&commandsMutex);
     
     return condition;
 }
 
 void *fnConsume(void *arg) {
-    FILE *fpOut = (FILE *) arg;
+    char command[MAX_INPUT_SIZE];
 
     while ( keepConsuming() ) {
         pthread_mutex_lock(&commandsMutex);
-        while (isBufferEmpty(buffer) == TRUE) {
-            /* Perguntar ao stor */
+        while (isBufferEmpty(commandsBuffer) == TRUE) {
+
             if (endOfFile == TRUE) {
                 pthread_cond_broadcast(&canConsume);
                 pthread_mutex_unlock(&commandsMutex);
@@ -242,10 +235,13 @@ void *fnConsume(void *arg) {
 
             pthread_cond_wait(&canConsume, &commandsMutex);
         }
-        pthread_mutex_unlock(&commandsMutex);
 
-        applyCommands(fpOut);
+        strcpy(command, removeCommand(&commandsBuffer));
         pthread_cond_signal(&canProduce);
+        
+        pthread_mutex_unlock(&commandsMutex);
+        
+        applyCommands(command);
     }
 
     return NULL;
@@ -281,7 +277,7 @@ void closeProgram(FILE *fpRead, FILE *fpOut, char *inputFile, char *outputFile) 
 }
 
 int main(int argc, char* argv[]) {
-    initBuffer(&buffer);
+    initBuffer(&commandsBuffer);
 
     FILE *fpRead;
     FILE *fpOut;
@@ -334,10 +330,11 @@ int main(int argc, char* argv[]) {
         errorParseCustom("Failed to create thread");
 
     for (int i = 0; i < numberThreads; i++) {
-        if(pthread_create(&tidConsumer[i], NULL, fnConsume, fpOut) != 0)
+        if(pthread_create(&tidConsumer[i], NULL, fnConsume, NULL) != 0)
             errorParseCustom("Failed to create thread");
     }
 
+    
     /* Waiting for all the commands to be executed */
     if (pthread_join(tidProducer, NULL) != 0)
         errorParseCustom("Failed to join thread");
@@ -347,9 +344,9 @@ int main(int argc, char* argv[]) {
             errorParseCustom("Failed to join thread");
     }
 
-
     /* Stop timer */
     stopTimer(&timer);
+
 
     print_tecnicofs_tree(fpOut);
 

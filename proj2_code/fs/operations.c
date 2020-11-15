@@ -433,6 +433,15 @@ int move(char *origin, char *destination) {
 
 	}
 
+	/*INTERBLOCAGEM CODIGO MEGA MERDOSO
+
+	while(1) {
+		int canMove = 0;
+		while(!canMove) {
+			//mudar os locks do insert_delay para se poder fazer aqui as verificaçoes yeeeeet
+		}
+	}
+*/
 	lockedLocks_unlock(&lockedLocks);
 	return SUCCESS;
 }
