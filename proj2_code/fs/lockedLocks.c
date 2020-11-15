@@ -10,7 +10,7 @@ void lockedLocks_init(LockedLocks *lockedLocks) {
 	lockedLocks->numberOfLocks = 0;
 }
 
-/* Given a lock and a type, locks the lock according to the 
+/** Given a lock and a type, locks the lock according to the 
 * type passed and adds that lock to a list of all the locks
 *  used in that funcion 
 */
@@ -43,7 +43,7 @@ void lockedLocks_lock(LockedLocks *lockedLocks, int inumber , int type) {
 	lockedLocks->numberOfLocks++;	
 }
 
-/* Given all the lockedLocks unlocks them all 
+/* Given all the lockedLocks of an operations unlocks them all 
 */
 void lockedLocks_unlock(LockedLocks *lockedLocks) {
 	int numberOfLocks = lockedLocks->numberOfLocks; 

@@ -1,3 +1,0 @@
--> m a/b/c a/c :
-    fica enternamente a espera já que a/ é locked para read mas quando percorremos o path de destino
-    a/ tenta ser trancado para write mas a/ já esta trancado para read

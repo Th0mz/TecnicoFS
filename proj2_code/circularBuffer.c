@@ -36,7 +36,7 @@ char* removeHead(CircularBuffer *buffer) {
     return element;
 }
 
-/* Checkes if the buffer is full */
+/* Checks if the buffer is full */
 int isBufferFull(CircularBuffer buffer) {
     if (buffer.numberElements == MAX_COMMANDS)
         return 1;
@@ -44,7 +44,7 @@ int isBufferFull(CircularBuffer buffer) {
         return 0;
 }
 
-/* Checkes if the buffer is empty */
+/* Checks if the buffer is empty */
 int isBufferEmpty(CircularBuffer buffer) {
     if (buffer.numberElements == 0)
         return 1;

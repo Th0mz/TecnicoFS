@@ -19,19 +19,20 @@
 #define TRUE 1
 
 
-/*Global mutex to control the synchronization of the acess to the vector of commands */
+/*Global mutex to control the synchronization of the access to the vector of commands */
 pthread_mutex_t commandsMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t canProduce = PTHREAD_COND_INITIALIZER;
 pthread_cond_t canConsume = PTHREAD_COND_INITIALIZER;
 
+/* Number of consumer threads */
 int numberThreads = 0;
 
 CircularBuffer commandsBuffer;
 
-/* Flag that has the state of the file of inputs (ended or not) */
+/* Flag that has the state of the file of inputs (ended or not) if possible */
 int endOfFile = 0;
 
-/* Inserts  */
+/* Inserts the command [data] in the buffer */
 int insertCommand(char* data, CircularBuffer *buffer) {
 
     if(buffer->numberElements != MAX_COMMANDS) {
@@ -41,7 +42,7 @@ int insertCommand(char* data, CircularBuffer *buffer) {
     return 0;
 }
 
-/* Removes a command from the global buffer */
+/* Removes first command introduced in the buffer if possible */
 char* removeCommand(CircularBuffer *buffer) {
     char* command;
     
@@ -52,6 +53,7 @@ char* removeCommand(CircularBuffer *buffer) {
 
     return NULL;
 }
+
 
 void errorParse(){
     fprintf(stderr, "Error: command invalid\n");
@@ -64,10 +66,13 @@ void errorParseCustom(char *error) {
     exit(EXIT_FAILURE);
 }
 
+/** Given a file reads the first line checks for errors and if 
+*   there arent none adds the command to the buffer 
+*/
 void processInput(FILE *fpRead){
     char line[MAX_INPUT_SIZE];
     
-    /* break loop with ^Z or ^D */
+    /* Read a line from the file */
     if (fgets(line, sizeof(line)/sizeof(char), fpRead) == NULL) {
         endOfFile = TRUE;
         return;
@@ -83,6 +88,9 @@ void processInput(FILE *fpRead){
         return;
     }
 
+    /** Check if the line read is a valid one if it is 
+    *         adds it to the commandsBuffer 
+    */
     switch (token) {
         case 'c':
             if(numTokens != 3)
@@ -121,7 +129,9 @@ void processInput(FILE *fpRead){
     }
 }
 
+/* Receives a command and process the corresponding action */
 void applyCommands(char *command){
+    int searchResult;
     
     if (command == NULL){
         return;
@@ -131,12 +141,13 @@ void applyCommands(char *command){
     char name[MAX_INPUT_SIZE];
     char typeOrPath[MAX_INPUT_SIZE];
 
+    /* Splits the command in parts [token, name, type/path]*/
     int numTokens = sscanf(command, "%c %s %s", &token, name, typeOrPath);
     if (numTokens < 2) {
         errorParseCustom("invalid command in Queue");
     }
 
-    int searchResult;
+    /* With all the parts of the command executes the corresponding action */
     switch (token) {
         case 'c':
             type = typeOrPath[0];
@@ -191,19 +202,24 @@ int keepProducing() {
     return condition;
 }
 
-
+/**  Function that "produce commands". If the buffer isnt full,
+*    gets the first command of the file fpRead and adds it to
+*           the buffer of commands to be consumed
+*/
 void *fnProduce(void *arg) {
     FILE *fpRead = (FILE *) arg;
     
     while ( keepProducing() ) {
         pthread_mutex_lock(&commandsMutex);
+        /* If the buffer is full wait until it isnt */
         while (isBufferFull(commandsBuffer) == TRUE) {
             pthread_cond_wait(&canProduce, &commandsMutex);
         }
         
         processInput(fpRead);
-        pthread_cond_broadcast(&canConsume);
 
+        /* The command was add so the consumers can now consume */
+        pthread_cond_broadcast(&canConsume);
         pthread_mutex_unlock(&commandsMutex);
     }
 
@@ -219,14 +235,18 @@ int keepConsuming() {
     
     return condition;
 }
-
+/**  Function that "consumes commands". If the buffers isnt 
+ *   empty, gets the command that was inserted first in the
+ *          buffer and executes his functionality 
+ */
 void *fnConsume(void *arg) {
     char command[MAX_INPUT_SIZE];
 
     while ( keepConsuming() ) {
         pthread_mutex_lock(&commandsMutex);
+        /* If the buffer is empty wait until it isnt */
         while (isBufferEmpty(commandsBuffer) == TRUE) {
-
+            /* Checks if there is nothing else to be produced */
             if (endOfFile == TRUE) {
                 pthread_cond_broadcast(&canConsume);
                 pthread_mutex_unlock(&commandsMutex);
@@ -236,9 +256,11 @@ void *fnConsume(void *arg) {
             pthread_cond_wait(&canConsume, &commandsMutex);
         }
 
+        /* Get the command from the buffer */
         strcpy(command, removeCommand(&commandsBuffer));
-        pthread_cond_signal(&canProduce);
         
+        /* The command was consumed so the producer can add a new one */
+        pthread_cond_signal(&canProduce);
         pthread_mutex_unlock(&commandsMutex);
         
         applyCommands(command);
@@ -246,9 +268,9 @@ void *fnConsume(void *arg) {
 
     return NULL;
 }
-
+/** Allocates memory for the string passed by argument
+*    returning a pointer to the allocated memory */
 char *stringCopy(char *string) {
-    /* Allocates memory for the string passed by argument */
     char *newString;
 
     newString = (char *) malloc((sizeof(char) * strlen(string)) + 1);
@@ -257,6 +279,7 @@ char *stringCopy(char *string) {
     return newString;
 }
 
+/* Frees all allocated memory */
 void closeProgram(FILE *fpRead, FILE *fpOut, char *inputFile, char *outputFile) {
     /* release allocated memory */
     destroy_fs();

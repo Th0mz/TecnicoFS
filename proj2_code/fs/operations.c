@@ -6,7 +6,7 @@
 /* Given a path, fills pointers with strings for the parent path and child
  * file name
  * Input:
- *  - path: the path to split. ATENTION: the function may alter this parameter
+ *  - path: the path to split. ATTENTION: the function may alter this parameter
  *  - parent: reference to a char*, to store parent path
  *  - child: reference to a char*, to store child file name
  */
@@ -269,6 +269,7 @@ int delete(char *name){
 	return SUCCESS;
 }
 
+/* Removes the inode of the file to move from the origin directory */
 int delete_entry(char *name, DirEntry *entries) {
 	if (entries == NULL) {
 		return FAIL;
@@ -287,6 +288,7 @@ int delete_entry(char *name, DirEntry *entries) {
 	return FAIL;
 }
 
+/* Puts the inode of the file to move in the destination directory */
 int insert_entry(char *name, int inumber, DirEntry *entries) {
 	if (entries == NULL) {
 		return FAIL;
@@ -306,6 +308,7 @@ int insert_entry(char *name, int inumber, DirEntry *entries) {
 	return FAIL;
 }
 
+/* Moves the given file in the origin path to his new path destination if possible */
 int move(char *origin, char *destination) {
 
 	int origin_parent_inumber, origin_child_inumber; 
@@ -330,8 +333,8 @@ int move(char *origin, char *destination) {
 
 	origin_parent_inumber = lookup_functions(origin_parent_name, &lockedLocks);
 
-	/* Test : origin path exists*/
-		/* Check if parent is validid	*/
+	/* Test : origin path exists */
+		/* Check if parent is valid */
 	if (origin_parent_inumber == FAIL) {
 		printf("failed to move %s, invalid origin dir %s\n",
 		        origin_child_name, origin_parent_name);
@@ -351,7 +354,7 @@ int move(char *origin, char *destination) {
 		return FAIL;
 	}
 
-		/* Check if child is valid */
+	/* Check if child is valid */
 	origin_child_inumber = lookup_sub_node(origin_child_name, originPData.dirEntries);
 
 	if (origin_child_inumber == FAIL) {
@@ -380,7 +383,8 @@ int move(char *origin, char *destination) {
 
 	
 	/* Test : destination path exists */
-		/* Check if parent is valid	*/
+	/* Check if parent is valid	*/
+	/* If case to see if the move is made only to change the name of the file*/
 	if (origin_parent_inumber != destination_parent_inumber) {
 		if (destination_parent_inumber == FAIL) {
 			printf("failed to move %s, invalid parent dir %s\n",
@@ -405,9 +409,10 @@ int move(char *origin, char *destination) {
 	}
 
 
-		/* Check if child is valid */
+	/* Check if child is valid */
 	destination_child_inumber = lookup_sub_node(destination_child_name, destinationPData.dirEntries);
 
+	/* Checks if there is a file with the same name in destiny directory */
 	if (destination_child_inumber != FAIL) {
 		printf("could not move %s, file with same name exists in dir %s\n",
 		       destination, destination_parent_name);
@@ -491,6 +496,9 @@ int lookup(char *name) {
 	return current_inumber;
 }
 
+/**
+ *  Similar to lookup but it doesnt lock the node we are looking for
+ */
 int lookup_functions(char *name, LockedLocks *lockedLocks) {
 
 	char *saveptr;
