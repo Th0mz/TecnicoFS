@@ -97,7 +97,6 @@ int is_dir_empty(DirEntry *dirEntries) {
  *  - FAIL: if not found
  */
 int lookup_sub_node(char *name, DirEntry *entries) {
-	printf("[lookup_sub_node] child_name : %s \n", name);
 	if (entries == NULL) {
 		return FAIL;
 	}
@@ -353,7 +352,6 @@ int processPath(LockedLocks *lockedLocks, char *path, int isOrigin, char **child
 	strcpy(name_copy, path);
 	split_parent_child_from_path(name_copy, &parent_name, child_name);
 
-	printf("parant : %s  child : %s\n", parent_name, *child_name);
 	parent_inumber = lookup_move(parent_name, lockedLocks);
 
 	/* Test : origin path exists */
@@ -377,9 +375,7 @@ int processPath(LockedLocks *lockedLocks, char *path, int isOrigin, char **child
 	}
 
 	/* Check if child is valid */
-	printf("AQUIIIIII \n");
 	*child_inumber = lookup_sub_node(*child_name, PData->dirEntries);
-	printf("child_inumber : %d", *child_inumber);
 
 	if (isOrigin == TRUE && *child_inumber == FAIL) {
 		printf("could not move %s, does not exist in dir %s\n",
@@ -420,6 +416,7 @@ int move(char *origin, char *destination) {
 
 	int origin_child_inumber, destination_child_inumber;
 
+	char *child_name = (char *) malloc((sizeof(char) * MAX_FILE_NAME) + 1);
 	char *origin_child_name = (char *) malloc((sizeof(char) * MAX_FILE_NAME) + 1);
 	char *destination_child_name = (char *) malloc((sizeof(char) * MAX_FILE_NAME) + 1);
 
@@ -431,27 +428,27 @@ int move(char *origin, char *destination) {
 
 	if (originBiggerThanDestination == TRUE) {
 		
-		if( processPath(&lockedLocks, smallerPath, FALSE, &destination_child_name, &destination_child_inumber, &destinationPData) == FAIL) {
+		if( processPath(&lockedLocks, smallerPath, FALSE, &child_name, &destination_child_inumber, &destinationPData) == FAIL) {
 			//free(origin_child_name);
 			//free(destination_child_name);
 
 			lockedLocks_unlock(&lockedLocks);
 			return FAIL;
 		}
+		strcpy(destination_child_name, child_name);
 
-		printf("Acabou de Processar : destinationChildName = %s, destinationChildInumber = %d\n", destination_child_name, destination_child_inumber);
 
-		if ( processPath(&lockedLocks, biggerPath, TRUE, &origin_child_name, &origin_child_inumber, &originPData) == FAIL) {
+		if ( processPath(&lockedLocks, biggerPath, TRUE, &child_name, &origin_child_inumber, &originPData) == FAIL) {
 			// free(origin_child_name);
 			// free(destination_child_name);
 
 			lockedLocks_unlock(&lockedLocks);
-			
 			return FAIL;
 		}
+		strcpy(origin_child_name, child_name);
 		
 	} else {
-		if(processPath(&lockedLocks, smallerPath, TRUE, &origin_child_name, &origin_child_inumber, &originPData) == FAIL) {
+		if(processPath(&lockedLocks, smallerPath, TRUE, &child_name, &origin_child_inumber, &originPData) == FAIL) {
 		
 			//free(origin_child_name);
 			//free(destination_child_name);
@@ -459,17 +456,22 @@ int move(char *origin, char *destination) {
 			lockedLocks_unlock(&lockedLocks);
 			return FAIL;
 		}
-		
-		printf("Acabou de Processar : destinationChildName = %s, destinationChildInumber = %d\n", origin_child_name, origin_child_inumber);
+		strcpy(origin_child_name, child_name);
 
-		if( processPath(&lockedLocks, biggerPath, FALSE, &destination_child_name, &destination_child_inumber, &destinationPData) == FAIL) {
+		
+		if( processPath(&lockedLocks, biggerPath, FALSE, &child_name, &destination_child_inumber, &destinationPData) == FAIL) {
 			// free(origin_child_name);
 			// free(destination_child_name);
 
 			lockedLocks_unlock(&lockedLocks);
 			return FAIL;
 		}
+		strcpy(destination_child_name, child_name);
 	}
+
+	printf("origin_child_name : %s\n", origin_child_name);
+	printf("origin_child_inumber : %d\n", origin_child_inumber);
+	printf("destination_child_name : %s\n", destination_child_name);
 
 	if (delete_entry(origin_child_name, originPData.dirEntries) == FAIL) {
 		printf("Cant remove %s from directory\n", origin_child_name);
