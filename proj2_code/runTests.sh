@@ -23,19 +23,20 @@ then
 	exit 1
 fi
 
-# Check if the max number of threads is a integer
+# Check if the max number of threads if a valid number
+#	Check if it is and integer
+re='^[0-9]+$'
 if ! [[ $3 =~ $re ]]
 then
-	echo Error : maxThreads is not an integer
+	echo Error : maxThreads is invalid, $3 must be an integer
 	exit 1
 fi
 
-# Check if the max number of threads if a valid number
-
+#	Check if it is grather than or equals 1
 if [ $3 -lt 1 ]
 then
-        echo Error : maxThreads is invalid, $3 must be \>=  1
-        exit 1
+	echo Error : maxThreads is invalid, $3 must be \>=  1
+	exit 1
 fi
 
 # Check if tecnicofs exists and is executable
