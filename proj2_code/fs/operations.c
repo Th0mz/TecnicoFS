@@ -3,6 +3,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#define TRUE 1
+#define FALSE 0
+
 /* Given a path, fills pointers with strings for the parent path and child
  * file name
  * Input:
@@ -94,6 +97,7 @@ int is_dir_empty(DirEntry *dirEntries) {
  *  - FAIL: if not found
  */
 int lookup_sub_node(char *name, DirEntry *entries) {
+	printf("[lookup_sub_node] child_name : %s \n", name);
 	if (entries == NULL) {
 		return FAIL;
 	}
@@ -138,7 +142,9 @@ int create(char *name, type nodeType){
 		return FAIL;
 	}
 
-	lockedLocks_lock(&lockedLocks, parent_inumber, WRITE);
+	if (parent_inumber != 0)
+		lockedLocks_lock(&lockedLocks, parent_inumber, WRITE);
+	
 	inode_get(parent_inumber, &pType, &pdata);
 
 	if(pType != T_DIRECTORY) {
@@ -214,8 +220,9 @@ int delete(char *name){
 		lockedLocks_unlock(&lockedLocks);
 		return FAIL;
 	}
-
-	lockedLocks_lock(&lockedLocks, parent_inumber, WRITE);
+	
+	if (parent_inumber != 0)
+		lockedLocks_lock(&lockedLocks, parent_inumber, WRITE);
 	inode_get(parent_inumber, &pType, &pdata);
 
 	if(pType != T_DIRECTORY) {
@@ -308,121 +315,167 @@ int insert_entry(char *name, int inumber, DirEntry *entries) {
 	return FAIL;
 }
 
+int numTimesAppears(char *text, char element) {
+	int sizeOfText = strlen(text);
+	int counter = 0, i = 0;
+	
+	for (i = 0; i < sizeOfText; i++) {
+		if(text[i] == element)
+			counter++;
+	}
+
+	return counter;
+}
+
+int isPathBigger(char *origin, char *destination, char *biggerPath, char *smallerPath) {
+
+	if (numTimesAppears(origin, '/') > numTimesAppears(destination, '/')) {
+		strcpy(biggerPath, origin);
+		strcpy(smallerPath, destination);
+
+		return TRUE;
+	} else {
+		strcpy(biggerPath, destination);
+		strcpy(smallerPath, origin);
+
+		return FALSE;
+	}
+}
+
+int processPath(LockedLocks *lockedLocks, char *path, int isOrigin, char **child_name, int *child_inumber, union Data* PData) {
+	char name_copy[MAX_FILE_NAME];
+	
+	char *parent_name;
+	int parent_inumber;
+	type PType, CType;
+	union Data CData; 
+
+	strcpy(name_copy, path);
+	split_parent_child_from_path(name_copy, &parent_name, child_name);
+
+	printf("parant : %s  child : %s\n", parent_name, *child_name);
+	parent_inumber = lookup_move(parent_name, lockedLocks);
+
+	/* Test : origin path exists */
+		/* Check if parent is valid */
+	if (parent_inumber == FAIL) {
+		printf("failed to move %s, invalid dir %s\n",
+		        *child_name, parent_name);
+
+		return FAIL;
+	}
+
+	if (parent_inumber != 0)
+		lockedLocks_tryLock(lockedLocks, parent_inumber, WRITE);
+	inode_get(parent_inumber, &PType, PData);
+
+	if(PType != T_DIRECTORY) {
+		printf("failed to move %s, parent %s is not a dir\n",
+		        *child_name, parent_name);
+		
+		return FAIL;
+	}
+
+	/* Check if child is valid */
+	printf("AQUIIIIII \n");
+	*child_inumber = lookup_sub_node(*child_name, PData->dirEntries);
+	printf("child_inumber : %d", *child_inumber);
+
+	if (isOrigin == TRUE && *child_inumber == FAIL) {
+		printf("could not move %s, does not exist in dir %s\n",
+		       path, parent_name);
+
+		return FAIL;
+	} else if (isOrigin == FALSE && *child_inumber != FAIL) {
+		printf("could not move %s, file with same name exists in dir %s\n",
+		path, parent_name);
+
+		return FAIL;
+	}
+
+
+	if (isOrigin == TRUE) {
+		lockedLocks_tryLock(lockedLocks, *child_inumber, WRITE);
+		inode_get(*child_inumber, &CType, &CData);
+
+		lockedLocks_tryLock(lockedLocks, *child_inumber, WRITE);
+		inode_get(*child_inumber, &CType, &CData);
+
+		if (CType == T_NONE) {
+			printf("could not move %s: not a directory neither a file\n",
+				path);
+
+			return FAIL;
+		}
+	}
+
+	return SUCCESS;
+}
+
 /* Moves the given file in the origin path to his new path destination if possible */
 int move(char *origin, char *destination) {
 
-	int origin_parent_inumber, origin_child_inumber; 
-	int destination_parent_inumber, destination_child_inumber;
+	char biggerPath[MAX_FILE_NAME], smallerPath[MAX_FILE_NAME];
+	int originBiggerThanDestination = isPathBigger(origin, destination, biggerPath, smallerPath);
 
-	char *origin_parent_name, *origin_child_name; 
-	char origin_name_copy[MAX_FILE_NAME];
+	int origin_child_inumber, destination_child_inumber;
 
-	char *destination_parent_name, *destination_child_name;
-	char destination_name_copy[MAX_FILE_NAME];
+	char *origin_child_name = (char *) malloc((sizeof(char) * MAX_FILE_NAME) + 1);
+	char *destination_child_name = (char *) malloc((sizeof(char) * MAX_FILE_NAME) + 1);
 
 	/* use for copy */
-	type originPType, originCType, destinationPType;
-	union Data originPData, originCData, destinationPData;
+	union Data originPData, destinationPData;
 
 	LockedLocks lockedLocks;
 	lockedLocks_init(&lockedLocks);
 
-	strcpy(origin_name_copy, origin);
-	split_parent_child_from_path(origin_name_copy, &origin_parent_name, &origin_child_name);
-
-
-	origin_parent_inumber = lookup_functions(origin_parent_name, &lockedLocks);
-
-	/* Test : origin path exists */
-		/* Check if parent is valid */
-	if (origin_parent_inumber == FAIL) {
-		printf("failed to move %s, invalid origin dir %s\n",
-		        origin_child_name, origin_parent_name);
-
-		lockedLocks_unlock(&lockedLocks);
-		return FAIL;
-	}
-
-	lockedLocks_lock(&lockedLocks, origin_parent_inumber, WRITE);
-	inode_get(origin_parent_inumber, &originPType, &originPData);
-
-	if(originPType != T_DIRECTORY) {
-		printf("failed to move %s, parent %s is not a dir\n",
-		        origin_child_name, origin_parent_name);
+	if (originBiggerThanDestination == TRUE) {
 		
-		lockedLocks_unlock(&lockedLocks);
-		return FAIL;
-	}
-
-	/* Check if child is valid */
-	origin_child_inumber = lookup_sub_node(origin_child_name, originPData.dirEntries);
-
-	if (origin_child_inumber == FAIL) {
-		printf("could not move %s, does not exist in origin dir %s\n",
-		       origin, origin_parent_name);
-
-		lockedLocks_unlock(&lockedLocks);
-		return FAIL;
-	}
-
-	lockedLocks_lock(&lockedLocks, origin_child_inumber, WRITE);
-	inode_get(origin_child_inumber, &originCType, &originCData);
-
-	if (originCType == T_NONE) {
-		printf("could not move %s: not a directory neither a file\n",
-		       origin);
-
-		lockedLocks_unlock(&lockedLocks);
-		return FAIL;
-	}
-
-	strcpy(destination_name_copy, destination);
-	split_parent_child_from_path(destination_name_copy, &destination_parent_name, &destination_child_name);
-
-	destination_parent_inumber = lookup_functions(destination_parent_name, &lockedLocks);
-
-	
-	/* Test : destination path exists */
-	/* Check if parent is valid	*/
-	/* If case to see if the move is made only to change the name of the file*/
-	if (origin_parent_inumber != destination_parent_inumber) {
-		if (destination_parent_inumber == FAIL) {
-			printf("failed to move %s, invalid parent dir %s\n",
-		    destination_child_name, destination_parent_name);
+		if( processPath(&lockedLocks, smallerPath, FALSE, &destination_child_name, &destination_child_inumber, &destinationPData) == FAIL) {
+			//free(origin_child_name);
+			//free(destination_child_name);
 
 			lockedLocks_unlock(&lockedLocks);
 			return FAIL;
 		}
 
-		lockedLocks_lock(&lockedLocks, destination_parent_inumber, WRITE);
-		inode_get(destination_parent_inumber, &destinationPType, &destinationPData);
+		printf("Acabou de Processar : destinationChildName = %s, destinationChildInumber = %d\n", destination_child_name, destination_child_inumber);
 
-		if(destinationPType != T_DIRECTORY) {
-			printf("failed to move %s, destination parent %s is not a dir\n",
-					destination_child_name, destination_parent_name);
+		if ( processPath(&lockedLocks, biggerPath, TRUE, &origin_child_name, &origin_child_inumber, &originPData) == FAIL) {
+			// free(origin_child_name);
+			// free(destination_child_name);
+
+			lockedLocks_unlock(&lockedLocks);
 			
+			return FAIL;
+		}
+		
+	} else {
+		if(processPath(&lockedLocks, smallerPath, TRUE, &origin_child_name, &origin_child_inumber, &originPData) == FAIL) {
+		
+			//free(origin_child_name);
+			//free(destination_child_name);
+
 			lockedLocks_unlock(&lockedLocks);
 			return FAIL;
 		}
-	} else {
-		destinationPData = originPData;
-	}
+		
+		printf("Acabou de Processar : destinationChildName = %s, destinationChildInumber = %d\n", origin_child_name, origin_child_inumber);
 
+		if( processPath(&lockedLocks, biggerPath, FALSE, &destination_child_name, &destination_child_inumber, &destinationPData) == FAIL) {
+			// free(origin_child_name);
+			// free(destination_child_name);
 
-	/* Check if child is valid */
-	destination_child_inumber = lookup_sub_node(destination_child_name, destinationPData.dirEntries);
-
-	/* Checks if there is a file with the same name in destiny directory */
-	if (destination_child_inumber != FAIL) {
-		printf("could not move %s, file with same name exists in dir %s\n",
-		       destination, destination_parent_name);
-
-		lockedLocks_unlock(&lockedLocks);
-		return FAIL;
+			lockedLocks_unlock(&lockedLocks);
+			return FAIL;
+		}
 	}
 
 	if (delete_entry(origin_child_name, originPData.dirEntries) == FAIL) {
 		printf("Cant remove %s from directory\n", origin_child_name);
+
+		//free(origin_child_name);
+		free(destination_child_name);
 
 		lockedLocks_unlock(&lockedLocks);
 		return FAIL;
@@ -432,21 +485,17 @@ int move(char *origin, char *destination) {
 	if (insert_entry(destination_child_name, origin_child_inumber, destinationPData.dirEntries) == FAIL) {
 		printf("Cant insert %s in directory\n", origin_child_name);
 
-		
+		//free(origin_child_name);
+		//free(destination_child_name);
+
 		lockedLocks_unlock(&lockedLocks);
 		return FAIL;
 
 	}
 
-	/*INTERBLOCAGEM CODIGO MEGA MERDOSO
+	//free(origin_child_name);
+	//free(destination_child_name);
 
-	while(1) {
-		int canMove = 0;
-		while(!canMove) {
-			//mudar os locks do insert_delay para se poder fazer aqui as verificaçoes yeeeeet
-		}
-	}
-*/
 	lockedLocks_unlock(&lockedLocks);
 	return SUCCESS;
 }
@@ -517,6 +566,8 @@ int lookup_functions(char *name, LockedLocks *lockedLocks) {
 	/* Checks if the full path as some thing in it	*/
 	if (strcmp(full_path, "") != 0) {
 		lockedLocks_lock(lockedLocks, current_inumber, READ);
+	} else {
+		lockedLocks_lock(lockedLocks, current_inumber, WRITE);
 	}
 	
 	/* get root inode data */
@@ -530,6 +581,48 @@ int lookup_functions(char *name, LockedLocks *lockedLocks) {
 		path = strtok_r(NULL, delim, &saveptr);
 		if (path != NULL) {
 			lockedLocks_lock(lockedLocks, current_inumber, READ);
+			inode_get(current_inumber, &nType, &data);
+		}
+	}
+
+	return current_inumber;
+}
+
+/**
+ *  Similar to lookup_functions but it doesnt does a trylock insted of a normal lock */
+int lookup_move(char *name, LockedLocks *lockedLocks) {
+
+	char *saveptr;
+	char full_path[MAX_FILE_NAME];
+	char delim[] = "/";
+
+	strcpy(full_path, name);
+
+	/* start at root node */
+	int current_inumber = FS_ROOT;
+
+	/* use for copy */
+	type nType;
+	union Data data;
+
+	/* Checks if the full path as some thing in it	*/
+	if (strcmp(full_path, "") != 0) {
+		lockedLocks_tryLock(lockedLocks, current_inumber, READ);
+	} else {
+		lockedLocks_lock(lockedLocks, current_inumber, WRITE);
+	}
+	
+	/* get root inode data */
+	inode_get(current_inumber, &nType, &data);
+
+	char *path = strtok_r(full_path, delim, &saveptr);
+
+	/* search for all sub nodes */
+	while (path != NULL && (current_inumber = lookup_sub_node(path, data.dirEntries)) != FAIL) {
+		
+		path = strtok_r(NULL, delim, &saveptr);
+		if (path != NULL) {
+			lockedLocks_tryLock(lockedLocks, current_inumber, READ);
 			inode_get(current_inumber, &nType, &data);
 		}
 	}

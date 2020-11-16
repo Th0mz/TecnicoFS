@@ -11,6 +11,7 @@ int delete(char *name);
 int move(char *origin, char *destination);
 int lookup(char *name);
 int lookup_functions(char *name, LockedLocks *lockedLocks);
+int lookup_move(char *name, LockedLocks *lockedLocks);
 void print_tecnicofs_tree(FILE *fp);
 
 #endif /* FS_H */
