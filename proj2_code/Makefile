@@ -15,7 +15,7 @@ all: tecnicofs
 tecnicofs: fs/state.o fs/operations.o fs/lockedLocks.o main.o timer.o circularBuffer.o 
 	$(LD) $(CFLAGS) $(LDFLAGS) -o tecnicofs fs/state.o fs/operations.o fs/lockedLocks.o main.o timer.o circularBuffer.o 
 
-fs/state.o: fs/state.c fs/state.h tecnicofs-api-constants.h
+fs/state.o: fs/state.c fs/state.h tecnicofs-api-constants.h fs/lockedLocks.h
 	$(CC) $(CFLAGS) -o fs/state.o -c fs/state.c
 
 fs/operations.o: fs/operations.c fs/operations.h fs/state.h fs/lockedLocks.h tecnicofs-api-constants.h

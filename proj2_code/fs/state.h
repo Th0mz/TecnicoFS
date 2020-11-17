@@ -16,9 +16,9 @@
 #define SUCCESS 0
 #define FAIL -1
 
-#define DELAY 5000000
+#define DELAY 5000
 
-
+#include "lockedLocks.h"
 
 /*
  * Contains the name of the entry and respective i-number
@@ -50,7 +50,8 @@ typedef struct inode_t {
 void insert_delay(int cycles);
 void inode_table_init();
 void inode_table_destroy();
-int inode_create(type nType);
+int inode_create(type nType, LockedLocks *lockedLocks);
+int inode_create_root(type nType);
 int inode_delete(int inumber);
 int inode_get(int inumber, type *nType, union Data *data);
 pthread_rwlock_t* inode_getLock(int inumber);

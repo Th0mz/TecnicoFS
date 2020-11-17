@@ -58,14 +58,46 @@ void inode_table_destroy() {
  *  inumber: identifier of the new i-node, if successfully created
  *     FAIL: if an error occurs
  */
-int inode_create(type nType) {
+int inode_create(type nType, LockedLocks *lockedLocks) {
+    /* Used for testing synchronization speedup */
+    insert_delay(DELAY);
+
+    for (int inumber = 0; inumber < INODE_TABLE_SIZE; inumber++) {
+        if (inode_table[inumber].nodeType == T_NONE) {
+            lockedLocks_lock(lockedLocks, inumber, WRITE);
+            inode_table[inumber].nodeType = nType;
+            if (nType == T_DIRECTORY) {
+                /* Initializes entry table */
+                inode_table[inumber].data.dirEntries = malloc(sizeof(DirEntry) * MAX_DIR_ENTRIES);
+                
+                for (int i = 0; i < MAX_DIR_ENTRIES; i++) {
+                    inode_table[inumber].data.dirEntries[i].inumber = FREE_INODE;
+                }
+            }
+            else {
+                inode_table[inumber].data.fileContents = NULL;
+            }
+            return inumber;
+        }
+    }
+    return FAIL;
+}
+
+/*
+ * Creates a new i-node in the table for the root directory.
+ * Input:
+ *  - nType: the type of the node (file or directory)
+ * Returns:
+ *  inumber: identifier of the new i-node, if successfully created
+ *     FAIL: if an error occurs
+ */
+int inode_create_root(type nType) {
     /* Used for testing synchronization speedup */
     insert_delay(DELAY);
 
     for (int inumber = 0; inumber < INODE_TABLE_SIZE; inumber++) {
         if (inode_table[inumber].nodeType == T_NONE) {
             inode_table[inumber].nodeType = nType;
-
             if (nType == T_DIRECTORY) {
                 /* Initializes entry table */
                 inode_table[inumber].data.dirEntries = malloc(sizeof(DirEntry) * MAX_DIR_ENTRIES);
