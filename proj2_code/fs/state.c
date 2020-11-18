@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <errno.h>
 #include "state.h"
 #include "../tecnicofs-api-constants.h"
 
@@ -61,23 +62,37 @@ void inode_table_destroy() {
 int inode_create(type nType, LockedLocks *lockedLocks) {
     /* Used for testing synchronization speedup */
     insert_delay(DELAY);
+    int erro;
 
     for (int inumber = 0; inumber < INODE_TABLE_SIZE; inumber++) {
-        if (inode_table[inumber].nodeType == T_NONE) {
-            lockedLocks_lock(lockedLocks, inumber, WRITE);
-            inode_table[inumber].nodeType = nType;
-            if (nType == T_DIRECTORY) {
-                /* Initializes entry table */
-                inode_table[inumber].data.dirEntries = malloc(sizeof(DirEntry) * MAX_DIR_ENTRIES);
-                
-                for (int i = 0; i < MAX_DIR_ENTRIES; i++) {
-                    inode_table[inumber].data.dirEntries[i].inumber = FREE_INODE;
+        erro = pthread_rwlock_trywrlock(&(inode_table[inumber].lock));
+
+        if (erro == 0) {
+            if (inode_table[inumber].nodeType == T_NONE) {
+                /* Adds the inumber to the list of lockedLocks */
+                lockedLocks_addInumber(lockedLocks, inumber);
+
+                inode_table[inumber].nodeType = nType;
+                if (nType == T_DIRECTORY) {
+                    /* Initializes entry table */
+                    inode_table[inumber].data.dirEntries = malloc(sizeof(DirEntry) * MAX_DIR_ENTRIES);
+                    
+                    for (int i = 0; i < MAX_DIR_ENTRIES; i++) {
+                        inode_table[inumber].data.dirEntries[i].inumber = FREE_INODE;
+                    }
                 }
+                else {
+                    inode_table[inumber].data.fileContents = NULL;
+                }
+                
+                return inumber;
+            } else {
+                pthread_rwlock_unlock(&(inode_table[inumber].lock));
             }
-            else {
-                inode_table[inumber].data.fileContents = NULL;
-            }
-            return inumber;
+            
+        } else if (erro != EBUSY) {
+            fprintf(stderr, "Error : Failed to lock the inumber %d lock\n", inumber);
+            return FAIL;
         }
     }
     return FAIL;

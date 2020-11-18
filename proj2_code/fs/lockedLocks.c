@@ -25,6 +25,7 @@ void lockedLocks_lock(LockedLocks *lockedLocks, int inumber , int type) {
 
 	if(type == READ) {
 		if(pthread_rwlock_rdlock(lock) != 0) { 
+			printf("Error : Failed to lock for read the inumber %d lock\n", inumber);
 			exit(EXIT_FAILURE); 
 		}
 
@@ -32,6 +33,7 @@ void lockedLocks_lock(LockedLocks *lockedLocks, int inumber , int type) {
 	}
 	else if (type == WRITE){ 
 		if(pthread_rwlock_wrlock(lock) != 0) { 
+			printf("Error : Failed to lock for write the inumber %d lock\n", inumber);
 			exit(EXIT_FAILURE);
 		}
 
@@ -42,6 +44,13 @@ void lockedLocks_lock(LockedLocks *lockedLocks, int inumber , int type) {
 	lockedLocks->lockedNodesinumbers[position] = inumber;
 
 	lockedLocks->numberOfLocks++;	
+}
+
+void lockedLocks_addInumber(LockedLocks *lockedLocks, int inumber) {
+	int position = lockedLocks->numberOfLocks;
+	lockedLocks->lockedNodesinumbers[position] = inumber;
+
+	lockedLocks->numberOfLocks++;
 }
 
 void lockedLocks_tryLock(LockedLocks *lockedLocks, int inumber, int type) {
@@ -57,7 +66,7 @@ void lockedLocks_tryLock(LockedLocks *lockedLocks, int inumber, int type) {
 		if(error == EBUSY) { 
 			return; 
 		} else if (error < 0) {
-			fprintf(stderr, "Error : tryrdlock faild tring to lock the inumber %d", inumber);
+			fprintf(stderr, "Error : tryrdlock failed trying to lock the inumber %d\n", inumber);
 			exit(EXIT_FAILURE);
 		}
 
@@ -68,7 +77,7 @@ void lockedLocks_tryLock(LockedLocks *lockedLocks, int inumber, int type) {
 		if(error == EBUSY) { 
 			return;
 		} else if (error < 0) {
-			fprintf(stderr, "Error : trywrlock faild tring to lock the inumber %d", inumber);
+			fprintf(stderr, "Error : trywrlock faild tring to lock the inumber %d\n", inumber);
 			exit(EXIT_FAILURE);
 		}
 
@@ -87,17 +96,19 @@ void lockedLocks_unlock(LockedLocks *lockedLocks) {
 	int numberOfLocks = lockedLocks->numberOfLocks; 
     
 	for (int i = 0; i < numberOfLocks; i++) {
-		pthread_rwlock_t *lock = inode_getLock(lockedLocks->lockedNodesinumbers[i]);
+		int inumber = lockedLocks->lockedNodesinumbers[i];
+		pthread_rwlock_t *lock = inode_getLock(inumber);
         
 		if (lock == NULL) {
             return;
         }
         
         if(pthread_rwlock_unlock(lock) != 0) {
+			printf("Error : Failed to unlock the inumber %d lock", inumber);
 			exit(EXIT_FAILURE);
 		}
 
-		// DEBUG: printf("[Unlock] inumber : %d\n", lockedLocks->lockedNodesinumbers[i]);	
+		// DEBUG: printf("[Unlock] inumber : %d\n", inumber);	
 	}
 	
 }

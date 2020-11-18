@@ -4,8 +4,8 @@
 /a/d2
 /a/d3
 /a/d4
-/a/d5
 /a/z
+/a/d5
 /e
 /e/b4
 /e/b5
@@ -14,7 +14,7 @@
 /c/b2
 /c/f
 /c/f2
-/c/b
 /c/f3
+/c/b
 /y
 /x

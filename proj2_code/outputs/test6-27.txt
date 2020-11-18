@@ -1,12 +1,10 @@
 
-/a
-/a/a
-/a/a/a
-/a/a/a/a
-/a/a/b
-/a/c
-/a/c/d
-/a/c/d/g2
-/a/c/c
-/a/c/c/c
 /b
+/b/d
+/b/d/e
+/b/d/d
+/b/b
+/b/b/c
+/b/b/c/e2
+/b/b/b
+/a

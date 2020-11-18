@@ -14,6 +14,7 @@ typedef struct lockedLocks {
 
 void lockedLocks_init(LockedLocks *lockedLocks);
 void lockedLocks_lock(LockedLocks *lockedLocks, int inumber, int type);
+void lockedLocks_addInumber(LockedLocks *lockedLocks, int inumber);
 void lockedLocks_tryLock(LockedLocks *lockedLocks, int inumber, int type);
 void lockedLocks_unlock(LockedLocks *lockedLocks);
 

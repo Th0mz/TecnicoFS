@@ -1,9 +1,9 @@
 
 /drapery
-/ergal
-/cypseline
 /telfer
+/cypseline
 /saccharimetrical
+/ergal
 /reluctantly
 /dalle
 /Ceramium
