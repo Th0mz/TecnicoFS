@@ -14,6 +14,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include "fs/operations.h"
+#include <errno.h>
 
 #include "timer.h"
 #include <pthread.h>
@@ -141,7 +142,15 @@ void initSocket(char *socketName) {
         errorParseCustom("failed to create socket");
     }
 
-    unlink(socketName);
+    int erro = unlink(socketName);
+    char *error = (char *) malloc(100);
+    perror(error);
+    if (erro < 0 ) {
+        printf("perror : %s\n", error);
+        printf("error : %d\n", erro);
+        errorParseCustom("server name unlink error");
+    }
+    
     addressLen = setSocketAddrUn(socketName, &server_address);
     if (bind(sockfd, (struct sockaddr *) &server_address, addressLen) < 0) {
         errorParseCustom("failed to bind name to the socket");
@@ -174,8 +183,8 @@ int main(int argc, char* argv[]) {
         errorParseCustom("numberThreads not an int or <= 0");
     }
 
-    char *serverName = stringCopy(argv[2]);
-    initSocket(serverName);
+    char *socketName = argv[2];
+    initSocket(socketName);
 
     /* Create thread pool and execute commands */
     pthread_t tid[numberThreads];
