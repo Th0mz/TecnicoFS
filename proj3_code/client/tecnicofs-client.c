@@ -32,6 +32,11 @@ void errorParse(){
     exit(EXIT_FAILURE);
 }
 
+void errorParseCustom(char *errorDescription) {
+    fprintf(stderr, "Error: %s\n", errorDescription);
+    exit(EXIT_FAILURE); 
+}
+
 void *processInput() {
     char line[MAX_INPUT_SIZE];
 
