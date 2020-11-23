@@ -110,7 +110,26 @@ void applyCommands(char *command){
 }
 
 void *processMessages(void *arg) {
-    return NULL;
+    /* Command properties */
+    char command[MAX_INPUT_SIZE];
+    int commandLen;
+
+    /* Client address properties */
+    struct sockaddr_un client_address;
+    socklen_t clientAddrLen;
+     
+    while (1) {
+        commandLen = recvfrom(sockfd, command, sizeof(command) - 1, 0, \
+                    (struct sockaddr *) &client_address, &clientAddrLen);
+        
+        if (commandLen < 0)
+            continue;
+
+        command[commandLen] = '\0';
+        printf("Server : Recebi o comando %s", command);
+        
+        //applyCommands(command)
+    }
 }
 
 
@@ -138,19 +157,11 @@ int setSocketAddrUn(char *path, struct sockaddr_un *address) {
 }
 
 void initSocket(char *socketName) {
-    if ((sockfd = socket(AF_UNIX, SOCK_DGRAM, 0) < 0)) {
+    if ((sockfd = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0) {
         errorParseCustom("failed to create socket");
     }
 
-    int erro = unlink(socketName);
-    char *error = (char *) malloc(100);
-    perror(error);
-    if (erro < 0 ) {
-        printf("perror : %s\n", error);
-        printf("error : %d\n", erro);
-        errorParseCustom("server name unlink error");
-    }
-    
+    unlink(socketName);
     addressLen = setSocketAddrUn(socketName, &server_address);
     if (bind(sockfd, (struct sockaddr *) &server_address, addressLen) < 0) {
         errorParseCustom("failed to bind name to the socket");
