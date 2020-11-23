@@ -138,21 +138,14 @@ int setSocketAddrUn(char *path, struct sockaddr_un *address) {
 }
 
 void initSocket(char *socketName) {
-    if ((sockfd = socket(AF_UNIX, SOCK_DGRAM, 0) < 0)) {
+    if ((sockfd = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0) {
         errorParseCustom("failed to create socket");
     }
 
-    int erro = unlink(socketName);
-    char *error = (char *) malloc(100);
-    perror(error);
-    if (erro < 0 ) {
-        printf("perror : %s\n", error);
-        printf("error : %d\n", erro);
-        errorParseCustom("server name unlink error");
-    }
-    
+    unlink(socketName);    
     addressLen = setSocketAddrUn(socketName, &server_address);
     if (bind(sockfd, (struct sockaddr *) &server_address, addressLen) < 0) {
+        printf("errno : %d", errno);
         errorParseCustom("failed to bind name to the socket");
     }
 }
