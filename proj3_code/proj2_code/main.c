@@ -48,12 +48,23 @@ void errorParseCustom(char *error) {
     exit(EXIT_FAILURE);
 }
 
+void sendErrorStatus(int errorStatus, struct sockaddr_un client_address, socklen_t clientAddrLen) {
+    if (errorStatus == SUCCESS) {
+        printf("clientAdd %s\n", client_address.sun_path);
+        sendto(sockfd, "0", sizeof("0") + 1, 0, (struct sockaddr *) &client_address, clientAddrLen);
+    }
+    else {
+        sendto(sockfd, "-1", sizeof("-1") + 1, 0, (struct sockaddr *) &client_address, clientAddrLen);
+    }
+}
+
 /* Receives a command and process the corresponding action */
-void applyCommands(char *command){
-    int searchResult;
+int applyCommands(char *command) {
+    /*Given value 1 if switch case goes down to default*/
+    int error = -1;
     
     if (command == NULL){
-        return;
+        return error;
     }
 
     char token, type;
@@ -66,6 +77,7 @@ void applyCommands(char *command){
         errorParseCustom("invalid command in Queue");
     }
 
+    printf("token : %c, name : %s, typeOrPath : %s\n", token, name, typeOrPath);
     /* With all the parts of the command executes the corresponding action */
     switch (token) {
         case 'c':
@@ -74,21 +86,21 @@ void applyCommands(char *command){
                 case 'f':
                     printf("Create file: %s\n", name);
 
-                    create(name, T_FILE);
+                    error = create(name, T_FILE);
                     break;
                 case 'd':
                     printf("Create directory: %s\n", name);
                     
-                    create(name, T_DIRECTORY);
+                    error = create(name, T_DIRECTORY);
                     break;
                 default:
                     errorParseCustom("invalid node type");
             }
             break;
         case 'l':     
-            searchResult = lookup(name);
+            error = lookup(name);
 
-            if (searchResult >= 0){
+            if (error >= 0){
                 printf("Search: %s found\n", name);
             }
             else{
@@ -98,17 +110,19 @@ void applyCommands(char *command){
         case 'd':
             printf("Delete: %s\n", name);
             
-            delete(name);
+            error = delete(name);
             break;
         case 'm':
             printf("Move: %s to %s\n", name, typeOrPath);
-            move(name, typeOrPath);
-
+            
+            error = move(name, typeOrPath);
             break;
         default: { /* error */
             errorParseCustom("command to apply");
         }
     }
+
+    return error;
 }
 
 void *processMessages(void *arg) {
@@ -119,10 +133,11 @@ void *processMessages(void *arg) {
     /* Client address properties */
     struct sockaddr_un client_address;
     socklen_t clientAddrLen;
+
+    int error;
      
     while (1) {
 
-        printf("Processa Mensagem\n");
         commandLen = recvfrom(sockfd, command, sizeof(command) - 1, 0, \
                     (struct sockaddr *) &client_address, &clientAddrLen);
         
@@ -131,8 +146,9 @@ void *processMessages(void *arg) {
 
         command[commandLen] = '\0';
         printf("Server : Recebi o comando %s\n", command);
-        
-        //applyCommands(command)
+        printf("Server : clientAdd %s\n", client_address.sun_path);
+        error = applyCommands(command);
+        sendErrorStatus(error, client_address, clientAddrLen);
     }
 }
 
@@ -161,7 +177,6 @@ int setSocketAddrUn(char *path, struct sockaddr_un *address) {
 }
 
 void initSocket(char *socketName) {
-    printf("initSocket\n");
     if ((sockfd = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0) {
         errorParseCustom("failed to create socket");
     }
@@ -199,7 +214,6 @@ int main(int argc, char* argv[]) {
         errorParseCustom("numberThreads not an int or <= 0");
     }
 
-    printf("picha\n");
     char *socketName = argv[2];
     initSocket(socketName);
 

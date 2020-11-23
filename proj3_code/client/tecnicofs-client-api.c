@@ -29,8 +29,41 @@ int setSocketAddrUn(char *path, struct sockaddr_un *address) {
     return SUN_LEN(address);
 }
 
+void sendCommand(char *command) {
+  sendto(sockfd, command, sizeof(command) + 1, 0, (struct sockaddr *) &server_address, serverAddrLen);
+}
+
+int receiveStatus() {
+  char status[MAX_INPUT_SIZE];
+  int statusLen;
+
+  printf("waiting for server to respond\n");
+  statusLen = recvfrom(sockfd, status, sizeof(status) - 1, 0, 0, 0);
+  printf("parou o wait\n");
+  
+  if (statusLen < 0)
+      return ERROR;
+
+  status[statusLen] = '\0';
+  printf("client : %s\n", status);
+  if (strcmp(status, "0") == 0)
+    return SUCCESS;
+  else 
+    return ERROR;
+
+}
+
 int tfsCreate(char *filename, char nodeType) {
-  return ERROR;
+  char command[MAX_INPUT_SIZE];
+
+  /*
+    Concatenates all requirements to a commandline
+    to execute the "create" Operation
+  */
+  sprintf(command, "c %s %c", filename, nodeType);
+  
+  sendCommand(command);
+  return receiveStatus();
 }
 
 int tfsDelete(char *path) {
@@ -70,9 +103,4 @@ int tfsMount(char * sockPath) {
 
 int tfsUnmount() {
   return ERROR;
-}
-
-int mandaMensagem() {
-  sendto(sockfd, "ohh nice", sizeof("ohh nice") + 1, 0, (struct sockaddr *) &server_address, serverAddrLen);
-  return 0;
 }
