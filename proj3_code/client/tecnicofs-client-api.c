@@ -37,15 +37,12 @@ int receiveStatus() {
   char status[MAX_INPUT_SIZE];
   int statusLen;
 
-  printf("waiting for server to respond\n");
   statusLen = recvfrom(sockfd, status, sizeof(status) - 1, 0, 0, 0);
-  printf("parou o wait\n");
-  
+
   if (statusLen < 0)
       return ERROR;
 
   status[statusLen] = '\0';
-  printf("client : %s\n", status);
   if (strcmp(status, "0") == 0)
     return SUCCESS;
   else 

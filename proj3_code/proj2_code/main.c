@@ -50,7 +50,6 @@ void errorParseCustom(char *error) {
 
 void sendErrorStatus(int errorStatus, struct sockaddr_un client_address, socklen_t clientAddrLen) {
     if (errorStatus == SUCCESS) {
-        printf("clientAdd %s\n", client_address.sun_path);
         sendto(sockfd, "0", sizeof("0") + 1, 0, (struct sockaddr *) &client_address, clientAddrLen);
     }
     else {
@@ -77,7 +76,6 @@ int applyCommands(char *command) {
         errorParseCustom("invalid command in Queue");
     }
 
-    printf("token : %c, name : %s, typeOrPath : %s\n", token, name, typeOrPath);
     /* With all the parts of the command executes the corresponding action */
     switch (token) {
         case 'c':
@@ -138,6 +136,7 @@ void *processMessages(void *arg) {
      
     while (1) {
 
+        clientAddrLen = sizeof(client_address);
         commandLen = recvfrom(sockfd, command, sizeof(command) - 1, 0, \
                     (struct sockaddr *) &client_address, &clientAddrLen);
         
@@ -145,8 +144,6 @@ void *processMessages(void *arg) {
             continue;
 
         command[commandLen] = '\0';
-        printf("Server : Recebi o comando %s\n", command);
-        printf("Server : clientAdd %s\n", client_address.sun_path);
         error = applyCommands(command);
         sendErrorStatus(error, client_address, clientAddrLen);
     }
