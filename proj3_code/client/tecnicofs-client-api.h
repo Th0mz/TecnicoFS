@@ -9,5 +9,6 @@ int tfsLookup(char *path);
 int tfsMove(char *from, char *to);
 int tfsMount(char* serverName);
 int tfsUnmount();
+int mandaMensagem();
 
 #endif /* CLIENT_H */
