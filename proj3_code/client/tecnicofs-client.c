@@ -125,7 +125,7 @@ int main(int argc, char* argv[]) {
     }
 
     mandaMensagem();
-    processInput();
+    //processInput();
 
     tfsUnmount();
 

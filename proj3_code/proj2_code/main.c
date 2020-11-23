@@ -31,11 +31,13 @@ pthread_mutex_t commandsMutex = PTHREAD_MUTEX_INITIALIZER;
 /* Number of consumer threds */
 int numberThreads = 0;
 
-int sockfd, addressLen;
+int sockfd;
+
+socklen_t addressLen;
 struct sockaddr_un server_address;
 
 
-void errorParse(){
+void errorParse() {
     fprintf(stderr, "Error: command invalid\n");
     exit(EXIT_FAILURE);
 }
@@ -119,6 +121,8 @@ void *processMessages(void *arg) {
     socklen_t clientAddrLen;
      
     while (1) {
+
+        printf("Processa Mensagem\n");
         commandLen = recvfrom(sockfd, command, sizeof(command) - 1, 0, \
                     (struct sockaddr *) &client_address, &clientAddrLen);
         
@@ -126,7 +130,7 @@ void *processMessages(void *arg) {
             continue;
 
         command[commandLen] = '\0';
-        printf("Server : Recebi o comando %s", command);
+        printf("Server : Recebi o comando %s\n", command);
         
         //applyCommands(command)
     }
@@ -157,6 +161,7 @@ int setSocketAddrUn(char *path, struct sockaddr_un *address) {
 }
 
 void initSocket(char *socketName) {
+    printf("initSocket\n");
     if ((sockfd = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0) {
         errorParseCustom("failed to create socket");
     }
@@ -194,6 +199,7 @@ int main(int argc, char* argv[]) {
         errorParseCustom("numberThreads not an int or <= 0");
     }
 
+    printf("picha\n");
     char *socketName = argv[2];
     initSocket(socketName);
 

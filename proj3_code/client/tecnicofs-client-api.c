@@ -9,8 +9,13 @@
 #define ERROR -1
 #define SUCCESS 0
 
-int sockfd, ServerAddrLen, ClientAddrLen;
-struct sockaddr_un server_address, client_address;
+int sockfd;
+
+socklen_t clientAddrLen;
+struct sockaddr_un client_address; 
+
+socklen_t serverAddrLen;
+struct sockaddr_un server_address;
 
 int setSocketAddrUn(char *path, struct sockaddr_un *address) {
     
@@ -45,29 +50,29 @@ int tfsMount(char * sockPath) {
     return ERROR;
   }
 
-  unlink("client");    
-  ClientAddrLen = setSocketAddrUn("client", &client_address);
-  if (ClientAddrLen == 0) {
-    return ERROR;
-  }
-  
-  if (bind(sockfd, (struct sockaddr *) &client_address, ClientAddrLen) < 0) {
+  unlink("/tmp/client");    
+  clientAddrLen = setSocketAddrUn("/tmp/client", &client_address);
+  if (clientAddrLen == 0) {
     return ERROR;
   }
 
-  ServerAddrLen = setSocketAddrUn(sockPath, &server_address);
-  if (ServerAddrLen == 0) {
+  if (bind(sockfd, (struct sockaddr *) &client_address, clientAddrLen) < 0) {
+    return ERROR;
+  }
+
+  serverAddrLen = setSocketAddrUn(sockPath, &server_address);
+  if (serverAddrLen == 0) {
     return ERROR;
   }
 
   return SUCCESS;
 }
 
-int mandaMensagem() {
-  sendto(sockfd, "ohhhh nice", sizeof("ohhhh nice") + 1, 0, (struct sockaddr *) &server_address, ServerAddrLen);
-  return 0;
-}
-
 int tfsUnmount() {
   return ERROR;
+}
+
+int mandaMensagem() {
+  sendto(sockfd, "ohh nice", sizeof("ohh nice") + 1, 0, (struct sockaddr *) &server_address, serverAddrLen);
+  return 0;
 }
