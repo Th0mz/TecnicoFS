@@ -48,15 +48,6 @@ void errorParseCustom(char *error) {
     exit(EXIT_FAILURE);
 }
 
-void sendErrorStatus(int errorStatus, struct sockaddr_un client_address, socklen_t clientAddrLen) {
-    if (errorStatus == SUCCESS) {
-        sendto(sockfd, "0", sizeof("0") + 1, 0, (struct sockaddr *) &client_address, clientAddrLen);
-    }
-    else {
-        sendto(sockfd, "-1", sizeof("-1") + 1, 0, (struct sockaddr *) &client_address, clientAddrLen);
-    }
-}
-
 /* Receives a command and process the corresponding action */
 int applyCommands(char *command) {
     /*Given value 1 if switch case goes down to default*/
@@ -144,8 +135,10 @@ void *processMessages(void *arg) {
             continue;
 
         command[commandLen] = '\0';
+        // DEBUG : printf("server : recived %s\n", command);
+        
         error = applyCommands(command);
-        sendErrorStatus(error, client_address, clientAddrLen);
+        sendto(sockfd, &error, sizeof(error), 0, (struct sockaddr *) &client_address, clientAddrLen);
     }
 }
 

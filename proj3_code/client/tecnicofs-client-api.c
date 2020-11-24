@@ -29,50 +29,79 @@ int setSocketAddrUn(char *path, struct sockaddr_un *address) {
     return SUN_LEN(address);
 }
 
-void sendCommand(char *command) {
-  sendto(sockfd, command, sizeof(command) + 1, 0, (struct sockaddr *) &server_address, serverAddrLen);
+void sendCommand(char *command, int commandLen) {
+  sendto(sockfd, command, commandLen, 0, (struct sockaddr *) &server_address, serverAddrLen);
 }
 
 int receiveStatus() {
-  char status[MAX_INPUT_SIZE];
-  int statusLen;
+  int status, statusLen;
 
-  statusLen = recvfrom(sockfd, status, sizeof(status) - 1, 0, 0, 0);
+  statusLen = recvfrom(sockfd, &status, sizeof(status), 0, 0, 0);
 
   if (statusLen < 0)
       return ERROR;
 
-  status[statusLen] = '\0';
-  if (strcmp(status, "0") == 0)
-    return SUCCESS;
-  else 
-    return ERROR;
-
+  return status;
 }
 
 int tfsCreate(char *filename, char nodeType) {
   char command[MAX_INPUT_SIZE];
+  int commandLen;
 
   /*
     Concatenates all requirements to a commandline
     to execute the "create" Operation
   */
   sprintf(command, "c %s %c", filename, nodeType);
-  
-  sendCommand(command);
+  commandLen = strlen(command);
+
+  sendCommand(command, commandLen);
   return receiveStatus();
 }
 
 int tfsDelete(char *path) {
-  return ERROR;
+  char command[MAX_INPUT_SIZE];
+  int commandLen;
+
+  /*
+    Concatenates all requirements to a commandline
+    to execute the "delete" Operation
+  */
+  sprintf(command, "d %s", path);
+  commandLen = strlen(command);
+  
+  sendCommand(command, commandLen);
+  return receiveStatus();
 }
 
 int tfsMove(char *from, char *to) {
-  return ERROR;
+  char command[MAX_INPUT_SIZE];
+  int commandLen;
+
+  /*
+    Concatenates all requirements to a commandline
+    to execute the "move" Operation
+  */
+  sprintf(command, "m %s %s", from, to);
+  commandLen = strlen(command);
+  
+  sendCommand(command, commandLen);
+  return receiveStatus();
 }
 
 int tfsLookup(char *path) {
-  return ERROR;
+  char command[MAX_INPUT_SIZE];
+  int commandLen;
+
+  /*
+    Concatenates all requirements to a commandline
+    to execute the "create" Operation
+  */
+  sprintf(command, "l %s", path);
+  commandLen = strlen(command);
+  
+  sendCommand(command, commandLen);
+  return receiveStatus();
 }
 
 int tfsMount(char * sockPath) {
