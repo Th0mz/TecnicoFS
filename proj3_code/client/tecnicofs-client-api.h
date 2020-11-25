@@ -7,6 +7,7 @@ int tfsCreate(char *path, char nodeType);
 int tfsDelete(char *path);
 int tfsLookup(char *path);
 int tfsMove(char *from, char *to);
+int tfsPrintTree(char *outputfile);
 int tfsMount(char* serverName);
 int tfsUnmount();
 

@@ -13,5 +13,6 @@ int lookup(char *name);
 int lookup_functions(char *name, LockedLocks *lockedLocks);
 int lookup_move(char *name, LockedLocks *lockedLocks);
 void print_tecnicofs_tree(FILE *fp);
+int printTree(char *outputFile);
 
 #endif /* FS_H */

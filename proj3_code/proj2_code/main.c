@@ -106,6 +106,11 @@ int applyCommands(char *command) {
             
             error = move(name, typeOrPath);
             break;
+        case 'p':
+            printf("PrintTree : save to %s\n", name);
+
+            error = printTree(name);
+            break;
         default: { /* error */
             errorParseCustom("command to apply");
         }

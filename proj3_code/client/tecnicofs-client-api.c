@@ -95,7 +95,7 @@ int tfsLookup(char *path) {
 
   /*
     Concatenates all requirements to a commandline
-    to execute the "create" Operation
+    to execute the "lookup" Operation
   */
   sprintf(command, "l %s", path);
   commandLen = strlen(command);
@@ -103,6 +103,22 @@ int tfsLookup(char *path) {
   sendCommand(command, commandLen);
   return receiveStatus();
 }
+
+int tfsPrintTree(char *outputfile) {
+  char command[MAX_INPUT_SIZE];
+  int commandLen;
+
+  /*
+    Concatenates all requirements to a commandline
+    to execute the "printTree" Operation
+  */
+  sprintf(command, "p %s", outputfile);
+  commandLen = strlen(command);
+  
+  sendCommand(command, commandLen);
+  return receiveStatus();
+}
+
 
 int tfsMount(char * sockPath) {
   if ((sockfd = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0) {

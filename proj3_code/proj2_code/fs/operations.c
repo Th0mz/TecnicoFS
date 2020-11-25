@@ -607,3 +607,8 @@ int lookup_move(char *name, LockedLocks *lockedLocks) {
 void print_tecnicofs_tree(FILE *fp){
 	inode_print_tree(fp, FS_ROOT, "");
 }
+
+int printTree(char *outputFile) {
+	printf("A dar output para o ficheiro\n");
+	return SUCCESS;
+}
