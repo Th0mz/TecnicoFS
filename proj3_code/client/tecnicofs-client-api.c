@@ -121,7 +121,6 @@ int tfsPrintTree(char *outputfile) {
 
 
 int tfsMount(char * sockPath) {
-  char tmpPath[MAX_FILE_NAME];
   char clientTempPath[MAX_FILE_NAME];
 
   if ((sockfd = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0) {
@@ -129,10 +128,8 @@ int tfsMount(char * sockPath) {
   }
 
   /* Create a temporary path for client */
-  mkstemp(tmpPath);
-  sprintf(clientTempPath, "/tmp/%s", tmpPath);
+  sprintf(clientTempPath, "/tmp/%d", getpid());
   unlink(clientTempPath);  
-
 
   clientAddrLen = setSocketAddrUn(clientTempPath, &client_address);
   if (clientAddrLen == 0) {
