@@ -609,6 +609,32 @@ void print_tecnicofs_tree(FILE *fp){
 }
 
 int printTree(char *outputFile) {
-	printf("A dar output para o ficheiro\n");
+
+	LockedLocks lockedLocks;
+	lockedLocks_init(&lockedLocks);
+
+	/* Locking the root for write doesnt allow other commands to
+	   execute while the printTree is executing [neither for reading
+	  nor for writing]
+	*/
+	lockedLocks_lock(&lockedLocks, FS_ROOT, WRITE);
+
+	FILE *fpOut;
+
+	/* Open the output file for writing */
+    fpOut = fopen(outputFile, "w");
+
+	/* Error : Check if the output file is valid */
+    if (fpOut == NULL) {
+        printf("Error : Check if the output file is valid");
+
+		lockedLocks_unlock(&lockedLocks);
+		return FAIL;
+    }
+
+	print_tecnicofs_tree(fpOut);
+    fclose(fpOut);
+
+	lockedLocks_unlock(&lockedLocks);
 	return SUCCESS;
 }
