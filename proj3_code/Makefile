@@ -12,22 +12,22 @@ all: tecnicofs-server tecnicofs-client
 clean: tecnicofs-client-clean tecnicofs-server-clean
 
 tecnicofs-server:
-    @echo
-    @echo Compiling Server Code : 
-    @$(CD) ./server/ && $(MAKE) --no-print-directory && $(CD) ..
+	@echo
+	@echo Compiling Server Code : 
+	@$(CD) ./server/ && $(MAKE) --no-print-directory && $(CD) ..
 
 tecnicofs-server-clean:
-    @echo
-    @echo Server : 
-    @$(CD) ./server/ && $(MAKE) --no-print-directory clean && $(CD) ..
+	@echo
+	@echo Server : 
+	@$(CD) ./server/ && $(MAKE) --no-print-directory clean && $(CD) ..
 
 tecnicofs-client:
-    @echo
-    @echo Compiling Client Code : 
-    @$(CD) ./client/ && $(MAKE) --no-print-directory && $(CD) ..
+	@echo
+	@echo Compiling Client Code :
+	@$(CD) ./client/ && $(MAKE) --no-print-directory && $(CD) ..
 
 tecnicofs-client-clean:
-    @echo
-    @echo Client : 
-    @$(CD) ./client/ && $(MAKE) clean --no-print-directory && $(CD) ..
+	@echo
+	@echo Client : 
+	@$(CD) ./client/ && $(MAKE) clean --no-print-directory && $(CD) ..
 
