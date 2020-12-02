@@ -29,8 +29,15 @@ int setSocketAddrUn(char *path, struct sockaddr_un *address) {
     return SUN_LEN(address);
 }
 
+void errorPrompt(char *error) {
+    fprintf(stderr, "Error: %s\n", error);
+    exit(EXIT_FAILURE);
+}
+
 void sendCommand(char *command, int commandLen) {
-  sendto(sockfd, command, commandLen, 0, (struct sockaddr *) &server_address, serverAddrLen);
+  if(sendto(sockfd, command, commandLen, 0, (struct sockaddr *) &server_address, serverAddrLen) < 0) {
+    errorPrompt("Sending message to server");
+  }
 }
 
 int receiveStatus() {
@@ -52,7 +59,10 @@ int tfsCreate(char *filename, char nodeType) {
     Concatenates all requirements to a commandline
     to execute the "create" Operation
   */
-  sprintf(command, "c %s %c", filename, nodeType);
+  if(sprintf(command, "c %s %c", filename, nodeType) < 0) {
+    errorPrompt("Creating command template");
+  }
+
   commandLen = strlen(command);
 
   sendCommand(command, commandLen);
@@ -67,7 +77,9 @@ int tfsDelete(char *path) {
     Concatenates all requirements to a commandline
     to execute the "delete" Operation
   */
-  sprintf(command, "d %s", path);
+  if(sprintf(command, "d %s", path) < 0) {
+    errorPrompt("Creating command template");
+  }
   commandLen = strlen(command);
   
   sendCommand(command, commandLen);
@@ -82,7 +94,9 @@ int tfsMove(char *from, char *to) {
     Concatenates all requirements to a commandline
     to execute the "move" Operation
   */
-  sprintf(command, "m %s %s", from, to);
+  if(sprintf(command, "m %s %s", from, to) < 0) {
+    errorPrompt("Creating command template");
+  }
   commandLen = strlen(command);
   
   sendCommand(command, commandLen);
@@ -97,7 +111,9 @@ int tfsLookup(char *path) {
     Concatenates all requirements to a commandline
     to execute the "lookup" Operation
   */
-  sprintf(command, "l %s", path);
+  if(sprintf(command, "l %s", path) < 0) {
+    errorPrompt("Creating command template");
+  }
   commandLen = strlen(command);
   
   sendCommand(command, commandLen);
@@ -112,7 +128,9 @@ int tfsPrintTree(char *outputfile) {
     Concatenates all requirements to a commandline
     to execute the "printTree" Operation
   */
-  sprintf(command, "p %s", outputfile);
+  if (sprintf(command, "p %s", outputfile) < 0) {
+    errorPrompt("Creating command template");
+  } 
   commandLen = strlen(command);
   
   sendCommand(command, commandLen);
@@ -128,7 +146,7 @@ int tfsMount(char * sockPath) {
   }
 
   /* Create a temporary path for client */
-  sprintf(clientTempPath, "/tmp/%d", getpid());
+  sprintf(clientTempPath, "/tmp/ClientServer%d", getpid());
   unlink(clientTempPath);  
 
   clientAddrLen = setSocketAddrUn(clientTempPath, &client_address);
@@ -150,5 +168,8 @@ int tfsMount(char * sockPath) {
 }
 
 int tfsUnmount() {
-  return ERROR;
+  close(sockfd);
+  unlink(client_address.sun_path);  
+
+  return SUCCESS;
 }

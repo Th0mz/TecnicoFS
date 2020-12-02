@@ -28,7 +28,7 @@
 /*Global mutex to control the synchronization of the access to the vector of commands */
 pthread_mutex_t commandsMutex = PTHREAD_MUTEX_INITIALIZER;
 
-/* Number of consumer threds */
+/* Number of consumer threads */
 int numberThreads = 0;
 
 int sockfd;
@@ -140,7 +140,7 @@ void *processMessages(void *arg) {
             continue;
 
         command[commandLen] = '\0';
-        // DEBUG : printf("server : recived %s\n", command);
+        // DEBUG : printf("server : received %s\n", command);
         
         error = applyCommands(command);
         sendto(sockfd, &error, sizeof(error), 0, (struct sockaddr *) &client_address, clientAddrLen);
