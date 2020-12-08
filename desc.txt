@@ -1,1 +1,0 @@
-File System at user-level, that keeps its contents at primary memory (RAM).
