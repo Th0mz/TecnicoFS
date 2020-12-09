@@ -37,7 +37,7 @@ int insertCommand(char* data) {
     return 0;
 }
 
-char* removeCommand() {
+void removeCommand(char *command) {
     /*the mutex only locks if there is a synchroniization strategy, besides "nosync"*/
     if (syncStrategy == MUTEX || syncStrategy == RWLOCK)
         pthread_mutex_lock(&commandsMutex);
@@ -45,14 +45,13 @@ char* removeCommand() {
     if(numberCommands > 0){
         numberCommands--;
 
+        strcpy(command, inputCommands[headQueue++]);
         pthread_mutex_unlock(&commandsMutex);
 
-        return inputCommands[headQueue++];  
+        return;  
     }
 
     pthread_mutex_unlock(&commandsMutex);
-
-    return NULL;
 }
 
 void errorParse() {
@@ -108,7 +107,8 @@ void processInput(FILE *fpRead){
 
 void applyCommands(FILE *fpOut){
     while (numberCommands > 0){
-        const char* command = removeCommand();
+        char command[MAX_INPUT_SIZE];
+        removeCommand(command);
         if (command == NULL){
             continue;
         }
@@ -245,13 +245,13 @@ int main(int argc, char* argv[]) {
     /* Create thread pool and execute commands */
     pthread_t tid[numberThreads];
 
+    /* Start timer*/
+    startTimer(&timer);
+
     /* Create thread pool */
     for (int i = 0; i < numberThreads; i++) {
         pthread_create(&tid[i], NULL, fnThread, NULL);
     }
-
-    /* Start timer*/
-    startTimer(&timer);
 
     /* Waiting for all the commands to be executed */
     for (int i = 0; i < numberThreads; i++) {
